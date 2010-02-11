@@ -1,0 +1,40 @@
+﻿Pointy Release Notes
+--------------------
+
+1.1
+Complete Documentation
+
+- Finish XML docs
+- Make sure there are comprehensive docs on the web
+- Sample HTTP file server
+
+1.0
+Feature Complete
+
+- Add utilties
+- Provide reasonably flexible, tested UrlDispatcher
+- Do proper URI parsing
+
+
+0.9
+Stability Release (Current)
+
+- Rewrote disconnect handling code
+- Added streaming response support for HTTP/1.0
+- Responses now use the async Socket API, and have better error handling
+- Created parser tests
+    - Wrote simple testing framework
+    - Ported all relevant test's from ryah's HTTP parser
+- Optimizations
+- Numerous bugfixes
+    - Fixed HTTP/1.0 Keep-Alive support
+	- Fixed chunked encoding edge case
+	- Others...
+
+0.8.1
+Minor bugfixing release
+
+- Fixed HTTP/1.0 detection bug
+
+0.8
+Initial public release

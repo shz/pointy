@@ -1,0 +1,24 @@
+﻿Paths/URIs - Right now the Request class uses a string for the requested resource path, but this should be
+             changed to use the System.Uri class.  I'll have to write a custom parser, since the builtin
+			 Uri constructor is totally useless for relative URIs, which we have to deal with.
+
+			 Probably going to use Ragel for this, based on RFC1808's BNF.
+
+Tests      - A nice suite of HTTP parser tests would be great to have, since that's the area most likely
+			 to have nasty edge-case bugs.
+
+			 For these tests, I'll start with some requests sent verbatim from common HTTP clients (IE8,
+			 Chrome, Firefox, Safari, HttpPerf, ab).  In addition to these, I'll test some more uncommon
+			 HTTP features that likely won't show up from a browser (Chunked Encoding transfer, for sure).
+			 I'll also make sure the parser is able to handle arbitrarily buffered data by having it parse
+			 buffers of various sizes (from 1 through len(whole request)).
+
+Code Documentation - Write some comprehensive XML docs
+
+URL Routing - Provide some flexible URL routing classes
+
+Utility Library - Provide some utilities for decompression/compression, multipart, maybe HTTP headers
+
+Networking - Test shutdown w/ pending data (make sure the pending data isn't sent)
+		   - HTTP/1.0 sans keep-alive aren't disconnecting
+		     Looks like Shutdown is getting called, but RemoveSocket is never called?
