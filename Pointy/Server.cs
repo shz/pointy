@@ -100,7 +100,10 @@ namespace Pointy
         /// <param name="socket">Socket to close</param>
         internal void FreeSocket(Socket socket)
         {
-            socket.Shutdown(SocketShutdown.Both);
+            socket.BeginDisconnect(false, delegate(IAsyncResult result)
+            {
+                socket.EndDisconnect(result);
+            }, null);
         }
         /// <summary>
         /// Destroys the socket, removing all internal references

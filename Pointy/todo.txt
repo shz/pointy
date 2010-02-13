@@ -19,6 +19,13 @@ URL Routing - Provide some flexible URL routing classes
 
 Utility Library - Provide some utilities for decompression/compression, multipart, maybe HTTP headers
 
-Networking - Test shutdown w/ pending data (make sure the pending data isn't sent)
-		   - HTTP/1.0 sans keep-alive aren't disconnecting
-		     Looks like Shutdown is getting called, but RemoveSocket is never called?
+1.0
+Feature Complete
+
+- Add utilties
+    - Provide reasonably flexible, tested UrlDispatcher
+	- Sample HTTP file server
+	- Multipart parsing
+- Do proper URI parsing
+- Finish XML docs
+- Make sure there are comprehensive docs on the web
