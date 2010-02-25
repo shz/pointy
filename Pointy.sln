@@ -9,6 +9,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{7E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hello World", "Hello World\Hello World.csproj", "{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8272706F-7F21-431E-BC6E-8A379A2FDFBA}"
+	ProjectSection(SolutionItems) = preProject
+		license.txt = license.txt
+		readme.txt = readme.txt
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileServer", "FileServer\FileServer.csproj", "{24575F65-02AA-4B7E-8A2E-1CA85B001894}"
+EndProject
 Global
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
@@ -43,11 +51,18 @@ Global
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Release|Any CPU.ActiveCfg = Release|x86
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Release|x86.ActiveCfg = Release|x86
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Release|x86.Build.0 = Release|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Debug|x86.ActiveCfg = Debug|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Debug|x86.Build.0 = Debug|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|Any CPU.ActiveCfg = Release|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|x86.ActiveCfg = Release|x86
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A} = {7EB64850-6DD0-4D95-950D-B3FB19454385}
+		{24575F65-02AA-4B7E-8A2E-1CA85B001894} = {7EB64850-6DD0-4D95-950D-B3FB19454385}
 	EndGlobalSection
 EndGlobal

@@ -47,7 +47,7 @@ namespace Pointy.HTTP
     /// </summary>
     /// <remarks>
     /// ResponseHandler takes care of writing HTTP responses to clients.  It provides four methods for doing so:
-    /// <see cref="StartResponse"/> <see cref="SendHeader"/> <see cref="SendBody"/> <see cref="FinishResponse"/>.
+    /// <see cref="Start"/> <see cref="SendHeader"/> <see cref="SendBody"/> <see cref="Finish"/>.
     /// Note that each of these methods blocks on network IO, to ensure proper data ordering and thread safety.
     /// 
     /// Both StartResponse and FinishResponse must be called in correct order to properly send a response.
@@ -161,30 +161,38 @@ namespace Pointy.HTTP
         /// <returns></returns>
         void Send(byte[] data)
         {
-            ClientSocket.BeginSend(data, 0, data.Length, SocketFlags.None, delegate(IAsyncResult result)
+            Send(new ArraySegment<byte>(data));
+        }
+        /// <summary>
+        /// DRY; Wraps common Socket.Send functionality
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        void Send(ArraySegment<byte> data)
+        {
+            ClientSocket.BeginSend(new ArraySegment<byte>[] {data}, SocketFlags.None, delegate(IAsyncResult result)
             {
                 SocketError error;
                 ClientSocket.EndSend(result, out error);
 
                 if (error != SocketError.Success)
                     Error();
-
             }, null);
         }
 
         /// <summary>
         /// Begins sending an HTTP 200 OK response to the client.
         /// </summary>
-        public bool StartResponse()
+        public bool Start()
         {
-            return StartResponse(200);
+            return Start(200);
         }
         /// <summary>
         /// Begins sending an HTTP response to the client with the specified status code and the default
         /// reason phrase for that code.
         /// </summary>
         /// <param name="code"></param>
-        public bool StartResponse(int code)
+        public bool Start(int code)
         {
             //This here switch statement calls StartResponse(int, string)
             //with the code and the default reason phrase.  All codes from
@@ -198,106 +206,106 @@ namespace Pointy.HTTP
                 #region 100s
 
                 case 100:
-                    return StartResponse(code, "Continue");
+                    return Start(code, "Continue");
                 case 101:
-                    return StartResponse(code, "Switching Protocols");
+                    return Start(code, "Switching Protocols");
 
                 #endregion
                 #region 200s
 
                 case 200:
-                    return StartResponse(code, "OK");
+                    return Start(code, "OK");
                 case 201:
-                    return StartResponse(code, "Created");
+                    return Start(code, "Created");
                 case 202:
-                    return StartResponse(code, "Accepted");
+                    return Start(code, "Accepted");
                 case 203:
-                    return StartResponse(code, "Non-Authoritative Information");
+                    return Start(code, "Non-Authoritative Information");
                 case 204:
-                    return StartResponse(code, "No Content");
+                    return Start(code, "No Content");
                 case 205:
-                    return StartResponse(code, "Reset Content");
+                    return Start(code, "Reset Content");
                 case 206:
-                    return StartResponse(code, "Partial Content");
+                    return Start(code, "Partial Content");
 
                 #endregion
                 #region 300s
 
                 case 300:
-                    return StartResponse(code, "Multiple Choices");
+                    return Start(code, "Multiple Choices");
                 case 301:
-                    return StartResponse(code, "Moved Permanently");
+                    return Start(code, "Moved Permanently");
                 case 302:
-                    return StartResponse(code, "Found");
+                    return Start(code, "Found");
                 case 303:
-                    return StartResponse(code, "See Other");
+                    return Start(code, "See Other");
                 case 304:
-                    return StartResponse(code, "Not Modified");
+                    return Start(code, "Not Modified");
                 case 305:
-                    return StartResponse(code, "Use Proxy");
+                    return Start(code, "Use Proxy");
                 case 307:
-                    return StartResponse(code, "Temporarly Redirect");
+                    return Start(code, "Temporarly Redirect");
 
                 #endregion
                 #region 400s
 
                 case 400:
-                    return StartResponse(code, "Bad Request");
+                    return Start(code, "Bad Request");
                 case 401:
-                    return StartResponse(code, "Unauthorized");
+                    return Start(code, "Unauthorized");
                 case 402:
-                    return StartResponse(code, "Payment Required");
+                    return Start(code, "Payment Required");
                 case 403:
-                    return StartResponse(code, "Forbidden");
+                    return Start(code, "Forbidden");
                 case 404:
-                    return StartResponse(code, "Not Found");
+                    return Start(code, "Not Found");
                 case 405:
-                    return StartResponse(code, "Method Not Allowed");
+                    return Start(code, "Method Not Allowed");
                 case 406:
-                    return StartResponse(code, "Not Acceptable");
+                    return Start(code, "Not Acceptable");
                 case 407:
-                    return StartResponse(code, "Proxy Authentication Required");
+                    return Start(code, "Proxy Authentication Required");
                 case 408:
-                    return StartResponse(code, "Request Time-out");
+                    return Start(code, "Request Time-out");
                 case 409:
-                    return StartResponse(code, "Conflict");
+                    return Start(code, "Conflict");
                 case 410:
-                    return StartResponse(code, "Gone");
+                    return Start(code, "Gone");
                 case 411:
-                    return StartResponse(code, "Length Required");
+                    return Start(code, "Length Required");
                 case 412:
-                    return StartResponse(code, "Precondition Failed");
+                    return Start(code, "Precondition Failed");
                 case 413:
-                    return StartResponse(code, "Request Entity Too Large");
+                    return Start(code, "Request Entity Too Large");
                 case 414:
-                    return StartResponse(code, "Request-URI Too Large");
+                    return Start(code, "Request-URI Too Large");
                 case 415:
-                    return StartResponse(code, "Unsupported Media Type");
+                    return Start(code, "Unsupported Media Type");
                 case 416:
-                    return StartResponse(code, "Requested range not satisfiable");
+                    return Start(code, "Requested range not satisfiable");
                 case 417:
-                    return StartResponse(code, "Expectation Failed");
+                    return Start(code, "Expectation Failed");
 
                 #endregion
                 #region 500s
 
                 case 500:
-                    return StartResponse(code, "Internal Server Error");
+                    return Start(code, "Internal Server Error");
                 case 501:
-                    return StartResponse(code, "Not Implemented");
+                    return Start(code, "Not Implemented");
                 case 502:
-                    return StartResponse(code, "Bad Gateway");
+                    return Start(code, "Bad Gateway");
                 case 503:
-                    return StartResponse(code, "Service Unavailable");
+                    return Start(code, "Service Unavailable");
                 case 504:
-                    return StartResponse(code, "Gateway Time-out");
+                    return Start(code, "Gateway Time-out");
                 case 505:
-                    return StartResponse(code, "HTTP Version not supported");
+                    return Start(code, "HTTP Version not supported");
 
                 #endregion
 
                 default:
-                    return StartResponse(code, "Hi Mom"); //If someone's using a crazy code without
+                    return Start(code, "Hi Mom"); //If someone's using a crazy code without
                                                           //supplying a reason phrase, they deserve it.
             }
         }
@@ -306,7 +314,7 @@ namespace Pointy.HTTP
         /// </summary>
         /// <param name="code">HTTP status code (See RFC2616 6.1.1)</param>
         /// <param name="reasonPhrase">Reason phrase</param>
-        public bool StartResponse(int code, string reasonPhrase)
+        public bool Start(int code, string reasonPhrase)
         {
             //Make sure we're in the right response state
             if (SockError)
@@ -406,6 +414,15 @@ namespace Pointy.HTTP
         /// <returns></returns>
         public bool SendBody(byte[] data)
         {
+            return SendBody(new ArraySegment<byte>(data));
+        }
+        /// <summary>
+        /// Sends data to the client.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        public bool SendBody(ArraySegment<byte> data)
+        {
             //Make sure we're in the right response state
             if (SockError)
                 return false;
@@ -455,7 +472,7 @@ namespace Pointy.HTTP
 
             //If we're in chunked mode, send the chunk length
             if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
-                Send(string.Format("{0:x}\r\n", data.Length));
+                Send(string.Format("{0:x}\r\n", data.Count));
 
             //Write ze data
             Send(data);
@@ -475,7 +492,7 @@ namespace Pointy.HTTP
         /// Finishes sending the response to the client.
         /// </summary>
         /// <returns></returns>
-        public bool FinishResponse()
+        public bool Finish()
         {
             //Make sure we're in the right response state
             if (SockError)

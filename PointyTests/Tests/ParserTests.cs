@@ -1,4 +1,27 @@
-﻿using System;
+﻿// Tests/ParserTests.cs
+// Generic parser tests for Pointy
+
+// Copyright (c) 2010 Patrick Stein
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -12,7 +35,7 @@ using Pointy.HTTP;
 // - IE
 // - Tests that should fail
 
-namespace PointyTests.Tests
+namespace PointyTests
 {
     /// <summary>
     /// Helper class for testing parsers
@@ -321,65 +344,60 @@ namespace PointyTests.Tests
             //Do tests, sending the entire body at once
             foreach (ParserTest test in ParserTest.Tests)
             {
-                Console.WriteLine("\t" + test.Name);
+                Tests.PushTest(test.Name);
 
                 ParseResult result = parser.AddBytes(new ArraySegment<byte>(test.Bytes));
 
-                if (!result.Close == test.Result.Close)
-                    Console.WriteLine("\t\tFAIL: Improper disconnect handling");
+                //Disconnect handling
+                Tests.Expect(test.Result.Close, result.Close, "Disconnect handling correct");
+
+                //Response/Request testing
                 if (result.Response == null && test.Result.Response != null)
                 {
-                    Console.WriteLine("\t\tFAIL: Response was expected, but not returned");
+                    Tests.Result(false, "Response Present");
                 }
                 else if (result.Request == null && test.Result.Request != null)
                 {
-                    Console.WriteLine("\t\tFAIL: Request was expected, but not returned");
+                    Tests.Result(false, "Request Present");
                 }
                 else
                 {
+                    //Compare the response, if it's present
                     if (result.Response != null)
                     {
-                        if (!result.Response.Name.Equals(test.Result.Response.Name))
-                            Console.WriteLine("\t\tFAIL: Expected response name \"{0}\", got \"{1}\"", test.Result.Response.Name, result.Response.Name);
-                        if (!result.Response.Name.Equals(test.Result.Response.Name))
-                            Console.WriteLine("\t\tFAIL: Expected response number \"{0}\", got \"{1}\"", test.Result.Response.Number, result.Response.Number);
+                        Tests.Expect(test.Result.Response.Name, result.Response.Name, "Response name correct");
+                        Tests.Expect(test.Result.Response.Number, result.Response.Number, "Response HTTP code correct");
                     }
+                    //Compare the request, if it's present
                     else if (result.Request != null)
                     {
                         //check request data
-                        if (result.Request.Version != test.Result.Request.Version)
-                            Console.WriteLine("\t\tFAIL: Expected response version \"{0}\", got \"{1}\"", test.Result.Request.Version, result.Request.Version);
-                        if (!result.Request.Path.Equals(test.Result.Request.Path))
-                            Console.WriteLine("\t\tFAIL: Expected response path {0}, got {1}", test.Result.Request.Path, result.Request.Path);
-                        if (!result.Request.Method.Equals(test.Result.Request.Method))
-                            Console.WriteLine("\t\tFAIL: Expected response method {0}, got {1}", test.Result.Request.Method, result.Request.Method);
+                        Tests.Expect(test.Result.Request.Version, result.Request.Version, "Request version correct");
+                        Tests.Expect(test.Result.Request.Path, result.Request.Path, "Request path correct");
+                        Tests.Expect(test.Result.Request.Method, result.Request.Method, "Request method correct");
 
-                        //check headers
+                        //check that headers in the response are correct, and should be present
                         foreach (KeyValuePair<string, string> pair in result.Request.Headers)
-                            if (!test.Result.Request.Headers.ContainsKey(pair.Key))
-                                Console.WriteLine("\t\tFAIL: Should not have header \"{0}: {1}\"", pair.Key, pair.Value);
-                            else if (!test.Result.Request.Headers[pair.Key].Equals(pair.Value))
-                                Console.WriteLine("\t\tFAIL: Expected header \"{0}: {1}\", got \"{0}: {2}\"", pair.Key, test.Result.Request.Headers[pair.Key], pair.Value);
+                            if (Tests.Result(test.Result.Request.Headers.ContainsKey(pair.Key), string.Format("Header {0} expected", pair.Key)))
+                                Tests.Expect(test.Result.Request.Headers[pair.Key], pair.Value, string.Format("Header {0} correct", pair.Key));
+
+                        //check that the response has all the headers it should
                         foreach (KeyValuePair<string, string> pair in test.Result.Request.Headers)
-                            if (!result.Request.Headers.ContainsKey(pair.Key))
-                                Console.WriteLine("\t\tFAIL: Expected header \"{0}: {1}\", but no such header was present", pair.Key, pair.Value);
+                            Tests.Result(result.Request.Headers.ContainsKey(pair.Key), "Header {0} present");
                         
                         //check entities
                         if (result.Request.Entity != null && test.Result.Request.Entity == null)
                         {
-                            Console.WriteLine("\t\tFAIL: Should not have request entity");
+                            Tests.Result(false, "Entity not present");
                         }
                         else if (result.Request.Entity == null && test.Result.Request.Entity != null)
                         {
-                            Console.WriteLine("\t\tFAIL: Missing request entity");
+                            Tests.Result(false, "Entity present");
                         }
                         else if (test.Result.Request.Entity != null)
                         {
-                            if (test.Result.Request.Entity.Length != result.Request.Entity.Length)
-                            {
-                                Console.WriteLine("\t\tFAIL: Expected entity size {0}, got {1}", test.Result.Request.Entity.Length, result.Request.Entity.Length);
-                            }
-                            else
+                            Tests.Expect(test.Result.Request.Entity.Length, result.Request.Entity.Length, "Entity length correct");
+                            if (test.Result.Request.Entity.Length == result.Request.Entity.Length)
                             {
                                 int t, r;
                                 for (int i = 0; i < test.Result.Request.Entity.Length; i++ )
@@ -389,7 +407,7 @@ namespace PointyTests.Tests
 
                                     if (r != t)
                                     {
-                                        Console.WriteLine("\t\tFAIL: Entities differ at byte {0}; expected {1}, got {2}", i, t, r);
+                                        Tests.Result(false, string.Format("Entities equal at byte {0}", i), string.Format("Expected {0}, got {1}", t, r));
                                         break;
                                     }
                                 }
@@ -397,6 +415,8 @@ namespace PointyTests.Tests
                         }
                     }
                 }
+                //Prepare for the next parser test
+                Tests.PopTest();
             }
         }
     }

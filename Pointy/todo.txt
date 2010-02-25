@@ -4,28 +4,34 @@
 
 			 Probably going to use Ragel for this, based on RFC1808's BNF.
 
-Tests      - A nice suite of HTTP parser tests would be great to have, since that's the area most likely
-			 to have nasty edge-case bugs.
-
-			 For these tests, I'll start with some requests sent verbatim from common HTTP clients (IE8,
-			 Chrome, Firefox, Safari, HttpPerf, ab).  In addition to these, I'll test some more uncommon
-			 HTTP features that likely won't show up from a browser (Chunked Encoding transfer, for sure).
-			 I'll also make sure the parser is able to handle arbitrarily buffered data by having it parse
-			 buffers of various sizes (from 1 through len(whole request)).
-
-Code Documentation - Write some comprehensive XML docs
-
-URL Routing - Provide some flexible URL routing classes
+Tests        Add tests for Chrome, Safari, IE8, and test parser granularity
 
 Utility Library - Provide some utilities for decompression/compression, multipart, maybe HTTP headers
 
-1.0
-Feature Complete
+HTTP Pipelining - The current parser architecture will fail completely with this.  Do some research
+				  on how useful and widespread it actually is, and what sort of impact supporting
+				  pipelining would have on parsing and response ordering.
+
+				  Currently, I'm going to set Pointy up to FAIL the Firefox and Opera pipelining
+				  heuristics, to be on the safe side.
+
+Done by 1.0:
 
 - Add utilties
     - Provide reasonably flexible, tested UrlDispatcher
-	- Sample HTTP file server
+	- Sample HTTP file server (In progress, should make it to 0.9)
 	- Multipart parsing
 - Do proper URI parsing
 - Finish XML docs
 - Make sure there are comprehensive docs on the web
+- More tests
+
+Done by 1.1:
+- HTTP Pipelining
+	- This will require a breaking change in the parser API (so this portion should be complete by 1.0)
+	- The main problem is supporting request streaming over a pipelined connection.  With multiple
+	  threads responding to requests, order is not guaranteed automatically.  This is especially
+	  an issue with response streaming.  The solution is simple in concept: don't stream the output.
+	  Instead, simply cache the streaming output temporarily, and send it once the preceeding requests
+	  are finished.  This works fine, though will obviously be a little sticky to implement.  some sort
+	  of checking will have to be done on the ordering of requests coming from each socket.
