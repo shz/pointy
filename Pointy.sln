@@ -12,9 +12,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8272706F-7F21-431E-BC6E-8A379A2FDFBA}"
 	ProjectSection(SolutionItems) = preProject
 		license.txt = license.txt
-		Pointy\notes.txt = Pointy\notes.txt
+		notes.txt = notes.txt
 		readme.txt = readme.txt
-		Pointy\todo.txt = Pointy\todo.txt
+		todo.txt = todo.txt
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileServer", "FileServer\FileServer.csproj", "{24575F65-02AA-4B7E-8A2E-1CA85B001894}"
