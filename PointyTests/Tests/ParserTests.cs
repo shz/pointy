@@ -339,83 +339,120 @@ namespace PointyTests
 
     public class ParserTests
     {
+        private static void CompareResults(ParseResult expected, ParseResult result)
+        {
+            //Disconnect handling
+            Tests.Expect(expected.Close, result.Close, "Disconnect handling correct");
+
+            //Response/Request testing
+            if (result.Response == null && expected.Response != null)
+            {
+                Tests.Result(false, "Response Present");
+            }
+            else if (result.Request == null && expected.Request != null)
+            {
+                Tests.Result(false, "Request Present");
+            }
+            else
+            {
+                //Compare the response, if it's present
+                if (result.Response != null)
+                {
+                    Tests.Expect(expected.Response.Name, result.Response.Name, "Response name correct");
+                    Tests.Expect(expected.Response.Number, result.Response.Number, "Response HTTP code correct");
+                }
+                //Compare the request, if it's present
+                else if (result.Request != null)
+                {
+                    //check request data
+                    Tests.Expect(expected.Request.Version, result.Request.Version, "Request version correct");
+                    Tests.Expect(expected.Request.Path, result.Request.Path, "Request path correct");
+                    Tests.Expect(expected.Request.Method, result.Request.Method, "Request method correct");
+
+                    //check that headers in the response are correct, and should be present
+                    foreach (KeyValuePair<string, string> pair in result.Request.Headers)
+                        if (Tests.Result(expected.Request.Headers.ContainsKey(pair.Key), string.Format("Header {0} expected", pair.Key)))
+                            Tests.Expect(expected.Request.Headers[pair.Key], pair.Value, string.Format("Header {0} correct", pair.Key));
+
+                    //check that the response has all the headers it should
+                    foreach (KeyValuePair<string, string> pair in expected.Request.Headers)
+                        Tests.Result(result.Request.Headers.ContainsKey(pair.Key), string.Format("Header {0} present", pair.Key));
+
+                    //check entities
+                    if (result.Request.Entity != null && expected.Request.Entity == null)
+                    {
+                        Tests.Result(false, "Entity not present");
+                    }
+                    else if (result.Request.Entity == null && expected.Request.Entity != null)
+                    {
+                        Tests.Result(false, "Entity present");
+                    }
+                    else if (expected.Request.Entity != null)
+                    {
+                        if (Tests.Expect(expected.Request.Entity.Length, result.Request.Entity.Length, "Entity length correct"))
+                        {
+                            Tests.PushTest("Entities Equal");
+
+                            //If we're reading from that static test list, we have to seek if we're not
+                            //the first test to run, otherwise the stream will be at its end.
+                            expected.Request.Entity.Seek(0, SeekOrigin.Begin);
+
+                            int t, r;
+                            for (int i = 0; i < expected.Request.Entity.Length; i++)
+                            {
+                                r = result.Request.Entity.ReadByte();
+                                t = expected.Request.Entity.ReadByte();
+
+                                if (r != t)
+                                {
+                                    Tests.Result(false, string.Format("Entities equal at byte {0}", i), string.Format("Expected {0}, got {1}", t, r));
+                                    break;
+                                }
+                            }
+                            Tests.PopTest();
+                        }
+                    }
+                }
+            }
+        }
+
         public static void TestParser(IParser parser)
         {
             //Do tests, sending the entire body at once
+            Tests.PushTest("Whole Request");
             foreach (ParserTest test in ParserTest.Tests)
             {
                 Tests.PushTest(test.Name);
 
                 ParseResult result = parser.AddBytes(new ArraySegment<byte>(test.Bytes));
 
-                //Disconnect handling
-                Tests.Expect(test.Result.Close, result.Close, "Disconnect handling correct");
+                CompareResults(test.Result, result);
 
-                //Response/Request testing
-                if (result.Response == null && test.Result.Response != null)
-                {
-                    Tests.Result(false, "Response Present");
-                }
-                else if (result.Request == null && test.Result.Request != null)
-                {
-                    Tests.Result(false, "Request Present");
-                }
-                else
-                {
-                    //Compare the response, if it's present
-                    if (result.Response != null)
-                    {
-                        Tests.Expect(test.Result.Response.Name, result.Response.Name, "Response name correct");
-                        Tests.Expect(test.Result.Response.Number, result.Response.Number, "Response HTTP code correct");
-                    }
-                    //Compare the request, if it's present
-                    else if (result.Request != null)
-                    {
-                        //check request data
-                        Tests.Expect(test.Result.Request.Version, result.Request.Version, "Request version correct");
-                        Tests.Expect(test.Result.Request.Path, result.Request.Path, "Request path correct");
-                        Tests.Expect(test.Result.Request.Method, result.Request.Method, "Request method correct");
-
-                        //check that headers in the response are correct, and should be present
-                        foreach (KeyValuePair<string, string> pair in result.Request.Headers)
-                            if (Tests.Result(test.Result.Request.Headers.ContainsKey(pair.Key), string.Format("Header {0} expected", pair.Key)))
-                                Tests.Expect(test.Result.Request.Headers[pair.Key], pair.Value, string.Format("Header {0} correct", pair.Key));
-
-                        //check that the response has all the headers it should
-                        foreach (KeyValuePair<string, string> pair in test.Result.Request.Headers)
-                            Tests.Result(result.Request.Headers.ContainsKey(pair.Key), "Header {0} present");
-                        
-                        //check entities
-                        if (result.Request.Entity != null && test.Result.Request.Entity == null)
-                        {
-                            Tests.Result(false, "Entity not present");
-                        }
-                        else if (result.Request.Entity == null && test.Result.Request.Entity != null)
-                        {
-                            Tests.Result(false, "Entity present");
-                        }
-                        else if (test.Result.Request.Entity != null)
-                        {
-                            Tests.Expect(test.Result.Request.Entity.Length, result.Request.Entity.Length, "Entity length correct");
-                            if (test.Result.Request.Entity.Length == result.Request.Entity.Length)
-                            {
-                                int t, r;
-                                for (int i = 0; i < test.Result.Request.Entity.Length; i++ )
-                                {
-                                    r = result.Request.Entity.ReadByte();
-                                    t = test.Result.Request.Entity.ReadByte();
-
-                                    if (r != t)
-                                    {
-                                        Tests.Result(false, string.Format("Entities equal at byte {0}", i), string.Format("Expected {0}, got {1}", t, r));
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
                 //Prepare for the next parser test
+                Tests.PopTest();
+            }
+            Tests.PopTest();
+
+            //Do tests, sending one byte at a time
+            Tests.PushTest("Byte-by-byte");
+            foreach (ParserTest test in ParserTest.Tests)
+            {
+                Tests.PushTest(test.Name);
+
+                ParseResult result = null;
+                Tests.PushTest("Data input");
+                for (int i = 0; i < test.Bytes.Length; i++)
+                {
+                    byte[] buffer = new byte[1];
+                    buffer[0] = test.Bytes[i];
+                    result = parser.AddBytes(new ArraySegment<byte>(buffer));
+                    if (i != test.Bytes.Length - 1)
+                        Tests.Expect(null, result, "Result is null");
+                }
+                Tests.PopTest();
+                //the last parse result holds what we want
+                CompareResults(test.Result, result);
+
                 Tests.PopTest();
             }
         }

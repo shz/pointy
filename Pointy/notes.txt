@@ -18,12 +18,15 @@ Pointy 0.9
 	- Others...
 - Added examples
     - Hello World
-	- File Server
+	- File Server (WIP)
+- Began adding utilities
+    - MIME type by extension
 
 Pointy 0.8.1
 Minor bugfixing release
 
 - Fixed HTTP/1.0 detection bug
+- Other misc bugfixes
 
 Pointy 0.8
 Initial public release

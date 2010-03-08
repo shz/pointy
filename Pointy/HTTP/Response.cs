@@ -43,25 +43,30 @@ namespace Pointy.HTTP
     }
 
     /// <summary>
-    /// Class used to write handle HTTP responses.
+    /// Class used to write HTTP responses to a client
     /// </summary>
     /// <remarks>
-    /// ResponseHandler takes care of writing HTTP responses to clients.  It provides four methods for doing so:
+    /// Response takes care of writing HTTP responses to clients.  It provides four methods for doing so:
     /// <see cref="Start"/> <see cref="SendHeader"/> <see cref="SendBody"/> <see cref="Finish"/>.
-    /// Note that each of these methods blocks on network IO, to ensure proper data ordering and thread safety.
     /// 
-    /// Both StartResponse and FinishResponse must be called in correct order to properly send a response.
+    /// Both Start and Finish must be called in correct order to properly send a response, but sending headers
+    /// and body is optional.
     /// 
-    /// Every call to a ResponseHandler method returns a bool, indicating if the call was successful.  If a method
+    /// Every call to one of Response's methods returns a bool, indicating if the call was successful.  If a method
     /// returns false, it indicated that some exception occurred on the socket that prevented network IO from
     /// successfully completing.  When this happens the underlying socket is cleanly disconnected, and any further
-    /// ResponseHandler calls will fail silently, returning false as well.  This allows an application to forego
-    /// error handling logic when using ResponseHandler, though for performance reasons error checking is preferred.
+    /// method calls will fail silently, returning false as well.  This allows an application to forego
+    /// error handling logic when using the class, though for performance reasons error checking is preferred.  Note
+    /// that the lack of an error does not necessarily indicate that a call was successful.  Since Response uses
+    /// the async Socket API, it may not be notified of a failure until after a method has successfully returned.
+    /// While subsequent method calls will fail properly, in this case the call from which the error originated will
+    /// still return a success indicator.
     /// 
-    /// ResponseHandler sends body data as it supplied, using chunked encoding by default.  If a Content-Length
+    /// Response sends body data as it supplied, using chunked encoding by default.  If a Content-Length
     /// header is sent, ResponseHandler will automatically use indentity encoding, forgoing the use of chunks.
-    /// If a client connects using HTTP/1.0 and no Content-Length header is set, ResponseHandler will raise an
-    /// error.
+    /// If a client connects using HTTP/1.0 and streaming mode is used, the socket will be disconnected
+    /// after the response finished, <i>regardless of the presence of a Keep-Alive header</i>; streaming HTTP/1.0
+    /// responses in any other way is impossible.
     /// 
     /// ResponseHandler enforces correct response usage according to the HTTP spec (RFC2616), but only on
     /// a high level, such as header/body data ordering; header names/values are not checked, and body
@@ -70,27 +75,29 @@ namespace Pointy.HTTP
     /// will actually accept them.
     /// </remarks>
     /// <example>
-    /// ResponseHandler handler;
+    /// Response response;
     /// 
-    /// //Code handler set somehow
+    /// //response is set to a Response object somehow
     /// 
-    /// //Basic example
-    /// handler.StartResponse();
-    /// handler.SendBody("Hello World"); //uses UTF8 encoding by default
-    /// handler.FinishResponse();
+    /// //Basic example (Streaming)
+    /// response.Start();
+    /// response.SendHeader("Content-Type", "text/plain; charset=utf-8");
+    /// response.SendBody("Hello World"); //uses UTF8 encoding by default
+    /// response.FinishResponse();
     /// 
-    /// //More advanced usage
-    /// handler.StartResponse(200, "OK");
-    /// handler.SendBody("Hello World", Encoding.ASCIIEncoding); //sends with ASCII encoding
-    /// handler.FinishResponse();
+    /// //More advanced usage (Streaming)
+    /// response.Start(200, "OK");
+    /// response.SendHeader("Content-Type", "text/plain");
+    /// response.SendBody("Hello World", Encoding.ASCIIEncoding); //sends with ASCII encoding
+    /// response.Finish();
     /// 
-    /// //Error handling - breaks early from the request handling process, saving
+    /// //Basic error handling - breaks early from the request handling process, saving
     /// //processing resources
-    /// if (!handler.StartResponse())
+    /// if (!response.Start())
     ///     return;
-    /// if (!handler.SendBody("Hello world"))
+    /// if (!response.SendBody("Hello world"))
     ///     return;
-    /// if (!handler.FinishResponse())
+    /// if (!response.Finish())
     ///     return;
     /// </example>
     public class Response
@@ -389,7 +396,7 @@ namespace Pointy.HTTP
         }
 
         /// <summary>
-        /// Sends a string to the client, using UTF8 encoding
+        /// Sends a string to the client, using UTF-8 encoding
         /// </summary>
         /// <param name="data">String to send</param>
         /// <returns></returns>
@@ -408,7 +415,7 @@ namespace Pointy.HTTP
             return SendBody(encoding.GetBytes(data));
         }
         /// <summary>
-        /// Sends data to the client.
+        /// Sends raw data to the client.
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
@@ -417,7 +424,7 @@ namespace Pointy.HTTP
             return SendBody(new ArraySegment<byte>(data));
         }
         /// <summary>
-        /// Sends data to the client.
+        /// Sends raw data to the client.
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>

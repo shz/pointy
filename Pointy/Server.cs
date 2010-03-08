@@ -53,9 +53,10 @@ namespace Pointy
         }
         public void Dispose()
         {
+            //This is probably a bad implementation, but the problem lies in Stop.
+            //TODO - In make sure Stop won't throw an exception, and then all is well
             Stop();
         }
-
 
         /// <summary>
         /// Starts the Pointy server.
@@ -73,8 +74,8 @@ namespace Pointy
             Sock.BeginAccept(new AsyncCallback(AcceptCallback), MakeParser());
         }
         /// <summary>
-        /// Stops the Pointy server
-        /// TODO
+        /// Stops the Pointy server, closing all active connections
+        /// and freeing all resources
         /// </summary>
         public void Stop()
         {
@@ -89,6 +90,7 @@ namespace Pointy
                     FreeSocket(socket);
                     socket.Close();
                 }
+                ActiveSockets.Clear();
 
                 Sock.Close();
             }
@@ -106,7 +108,7 @@ namespace Pointy
             }, null);
         }
         /// <summary>
-        /// Destroys the socket, removing all internal references
+        /// Closes the socket, removing all internal references
         /// </summary>
         /// <param name="socket"></param>
         internal void RemoveSocket(Socket socket)

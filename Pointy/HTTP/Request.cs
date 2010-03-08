@@ -29,7 +29,7 @@ using System.Text;
 namespace Pointy.HTTP
 {
     /// <summary>
-    /// HTTP Request
+    /// Pointy HTTP request object
     /// </summary>
     public class Request
     {
@@ -61,6 +61,7 @@ namespace Pointy.HTTP
         }
         /// <summary>
         /// Request path
+        /// NOTE: The type of this property will be changing in the future to a subtype of System.Uri
         /// </summary>
         public string Path
         {
@@ -73,6 +74,9 @@ namespace Pointy.HTTP
                 _Path = value;
             }
         }
+        /// <summary>
+        /// HTTP headers
+        /// </summary>
         public Dictionary<string, string> Headers
         {
             get
@@ -80,6 +84,9 @@ namespace Pointy.HTTP
                 return _Headers;
             }
         }
+        /// <summary>
+        /// Request entity
+        /// </summary>
         public Stream Entity
         {
             get
@@ -88,6 +95,14 @@ namespace Pointy.HTTP
             }
         }
 
+        /// <summary>
+        /// Creates a new HTTP request
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="version"></param>
+        /// <param name="path"></param>
+        /// <param name="headers"></param>
+        /// <param name="entity"></param>
         public Request(Methods method, Versions version, string path, Dictionary<string, string> headers, Stream entity)
         {
             _Method = method;

@@ -44,3 +44,6 @@ Pointy's examples are released into the public domain:
    OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
    ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
    OTHER DEALINGS IN THE SOFTWARE.
+
+Pointy's literature (documentation and supporting text files, including notes.txt, readme.txt, and todo.txt) is
+released under ... (TODO - most likely some CC license)

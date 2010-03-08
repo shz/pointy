@@ -25,6 +25,8 @@ using System;
 using System.Text;
 using System.Collections.Generic;
 
+//FIXME - Seriously lacking in documentation
+
 namespace PointyTests
 {
     /// <summary>
@@ -134,6 +136,41 @@ namespace PointyTests
                 }
 
             }
+            public void OutputConsole()
+            {
+                OutputConsole("");
+            }
+            public void OutputConsole(string indent)
+            {
+                Console.Write(indent + _Name + ": ");
+                if (Passed)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGreen;
+                    Console.WriteLine("PASS");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+                    Console.WriteLine("FAIL");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+
+                    if (_Details != null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.WriteLine(indent + "  Details: " + _Details);
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                    }
+
+                    if (HasChildren)
+                    {
+                        foreach (Test t in Children)
+                        {
+                            t.OutputConsole(indent + "  ");
+                        }
+                    }
+                }
+            }
         }
         class ExpectTest : Test
         {
@@ -141,7 +178,7 @@ namespace PointyTests
             {
 
             }
-            public ExpectTest(Test parent, object expect, object check, string message) : base(message, parent, expect.Equals(check))
+            public ExpectTest(Test parent, object expect, object check, string message) : base(message, parent, expect == null ? check == null : expect.Equals(check))
             {
                 this.Details = string.Format("Expected {0}, got {1}", expect, check);
             }
@@ -161,13 +198,36 @@ namespace PointyTests
             Current = Current.Parent;
         }
 
-        public static void Expect(object expect, object check)
+        /// <summary>
+        /// Test that the given expected object matches the given object
+        /// </summary>
+        /// <param name="expect">Object expected</param>
+        /// <param name="check">Object to compare to expected</param>
+        /// <returns>Boolean indicating if the test passed</returns>
+        public static bool Expect(object expect, object check)
         {
             Current.AddChild(new ExpectTest(Current, expect, check));
+
+            if (expect == null)
+                return check == null;
+            else
+                return expect.Equals(check);
         }
-        public static void Expect(object expect, object check, string message)
+        /// <summary>
+        /// Test that the given expected object matches the given object
+        /// </summary>
+        /// <param name="expect">Object expected</param>
+        /// <param name="check">Object to compare to expected</param>
+        /// <param name="message">Message describing test</param>
+        /// <returns>Boolean indicating if the test passed</returns>
+        public static bool Expect(object expect, object check, string message)
         {
             Current.AddChild(new ExpectTest(Current, expect, check, message));
+
+            if (expect == null)
+                return check == null;
+            else
+                return expect.Equals(check);
         }
 
         /// <summary>
@@ -175,6 +235,7 @@ namespace PointyTests
         /// </summary>
         /// <param name="result">Result of the test</param>
         /// <param name="message">Test description</param>
+        /// <returns>Result argument</returns>
         public static bool Result(bool result, string message)
         {
             Current.AddChild(new Test(message, Current, result));
@@ -186,6 +247,7 @@ namespace PointyTests
         /// <param name="result">Result of the test</param>
         /// <param name="message">Test description</param>
         /// <param name="details">Extra information about the test</param>
+        /// <returns>Result argument</returns>
         public static bool Result(bool result, string message, string details)
         {
             Test t = new Test(message, Current, result);
@@ -194,12 +256,25 @@ namespace PointyTests
             return result;
         }
 
-        public static string ToString()
+        public new static string ToString()
         {
             Test root = Current;
             while (root.Parent != null)
                 root = root.Parent;
             return root.ToString();
+        }
+
+        public static void OutputConsole()
+        {
+            //find the root test
+            Test root = Current;
+            while (root.Parent != null)
+                root = root.Parent;
+            
+            //and print it to the console
+            root.OutputConsole();
+
+            Console.WriteLine();
         }
     }
 }

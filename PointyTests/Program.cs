@@ -35,7 +35,8 @@ namespace PointyTests
             ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 100000});
             Tests.PopTest();
 
-            Console.WriteLine(Tests.ToString());
+            //Console.WriteLine(Tests.ToString());
+            Tests.OutputConsole();
 
             Console.WriteLine("Press any key to continue");
             Console.ReadKey();
