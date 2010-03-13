@@ -7,7 +7,7 @@ namespace Pointy.Util
     /// <summary>
     /// Utility class, providing functionality related to MIME types
     /// </summary>
-    static class MimeTypes
+    public static class MimeTypes
     {
         /// <summary>
         /// Guesses MIME type from file extension

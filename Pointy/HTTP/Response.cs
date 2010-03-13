@@ -179,6 +179,10 @@ namespace Pointy.HTTP
         {
             ClientSocket.BeginSend(new ArraySegment<byte>[] {data}, SocketFlags.None, delegate(IAsyncResult result)
             {
+                //Don't write if we're in an error state
+                if (SockError)
+                    return;
+
                 SocketError error;
                 ClientSocket.EndSend(result, out error);
 
@@ -531,6 +535,19 @@ namespace Pointy.HTTP
 
             //Tell the caller that we're good to go
             return true;
+        }
+
+        /// <summary>
+        /// Immediately stops writing to the client, and forces a disconnect.
+        /// 
+        /// This function should only be used when the user code has encountered
+        /// an error from which it cannot recover, while already writing a response.
+        /// Whenever possible, user code should attempt to make proper use of HTTP
+        /// status codes (likely 500-505) to gracefully handle errors.
+        /// </summary>
+        public void Kill()
+        {
+            Error();
         }
     }
 }

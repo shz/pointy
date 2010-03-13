@@ -68,7 +68,8 @@
     <Compile Include="Server.cs" />
     <Compile Include="IUrlDispatcher.cs" />
     <Compile Include="Util\MimeTypes.cs" />
-    <Compile Include="Util\Util.cs" />
+    <Compile Include="Util\MultipartFormData.cs" />
+    <Compile Include="Util\UrlEncoder.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />

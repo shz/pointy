@@ -4,12 +4,19 @@
 
 			 Probably going to use Ragel for this, based on RFC1808's BNF.
 
-Tests      -  Add tests for Chrome, Safari, IE8, and test parser granularity
-
-Utility Library - Provide some utilities for decompression/compression, multipart, maybe HTTP headers
+Tests      -  Add tests for Chrome, Safari, IE8
 
 Parsing    - Refactor the interface.  It's a little wonky right now, and needs to be changed to
-             support HTTP pipelining.
+             support HTTP pipelining
+
+Food for thought:  Right now, I'm reimplementing some functionality that's in System.Web.  I sort of
+				   want to keep doing this, and I sort of don't; while some of the utility classes are
+				   great, other are tied really closely to ASP.NET.  Additionally, while some of these
+				   classes would be great to use in the parsing API and such, a few are sealed, which
+				   means I'll have to reimplement them anyway.
+
+				   In the end, I feel that I should either go all-BCL, or all-Pointy.  I'm leaning
+				   towards the Pointy option, but I need to make a decision real soon now...
 
 Done by 1.0:
 
@@ -22,6 +29,7 @@ Done by 1.0:
 - Finish XML docs (mostly done already)
 - Make sure there are comprehensive docs on the web
 - More tests (Especially for UberStream)
+- API freeze
 
 Done by 1.1:
 - HTTP Pipelining
