@@ -8,6 +8,7 @@ Pointy 0.9
     - Now use the async Socket API
 	- Better error handling
 	- Added SendBody(ArraySegment)
+	- Now allows the user code to terminate the connection
 - Created parser tests
     - Wrote simple testing framework
     - Ported a bunch of tests from ryah's HTTP parser
@@ -18,7 +19,7 @@ Pointy 0.9
 	- Others...
 - Added examples
     - Hello World
-	- File Server (WIP)
+	- Basic File Server
 - Began adding utilities
     - MIME type by extension
 

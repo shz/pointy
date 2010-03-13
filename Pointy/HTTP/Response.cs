@@ -538,14 +538,14 @@ namespace Pointy.HTTP
         }
 
         /// <summary>
-        /// Immediately stops writing to the client, and forces a disconnect.
+        /// Immediately stops writing the response to the client, in an ungraceful manner.
         /// 
-        /// This function should only be used when the user code has encountered
-        /// an error from which it cannot recover, while already writing a response.
+        /// This method should only be used when the user code has encountered an
+        /// error from which it cannot recover, while already writing a response.
         /// Whenever possible, user code should attempt to make proper use of HTTP
         /// status codes (likely 500-505) to gracefully handle errors.
         /// </summary>
-        public void Kill()
+        public void Abort()
         {
             Error();
         }

@@ -22,12 +22,11 @@ Done by 1.0:
 
 - Add utilties
     - Provide reasonably flexible, tested UrlDispatcher
-	- Sample HTTP file server (In progress, should make it to 0.9)
 	- multipart/form-data parsing
-	- URLescaping 
+	- URLescaping (maybe)
 - Do proper URI parsing
 - Finish XML docs (mostly done already)
-- Make sure there are comprehensive docs on the web
+- Make sure there are comprehensive docs
 - More tests (Especially for UberStream)
 - API freeze
 

@@ -204,8 +204,8 @@ namespace Hello_World
                         {
                             //If there's an error thrown once we've already started
                             //sending the response to the client, we have no choice
-                            //but to abort and kill the connection.
-                            response.Kill();
+                            //but to abort.
+                            response.Abort();
                         }
                     };
 
