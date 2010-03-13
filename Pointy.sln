@@ -25,6 +25,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileServer", "FileServer\Fi
 		{B76A834B-732C-47D1-833D-CB895CAFC4F7} = {B76A834B-732C-47D1-833D-CB895CAFC4F7}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E661A116-1DCD-440C-B34A-6E8C66CEB4BE}"
+	ProjectSection(SolutionItems) = preProject
+		Documentation\index.html = Documentation\index.html
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
