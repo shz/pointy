@@ -31,7 +31,6 @@ using Pointy.HTTP;
 
 //Tests to Add:
 // - Safari
-// - Chrome
 // - IE
 // - Tests that should fail
 
@@ -72,11 +71,11 @@ namespace PointyTests
         }
         /// <summary>
         /// Holds our test cases.
-        /// 
-        /// These are adapted from ryah's HTTP parser tests (http://github.com/ry/http-parser/blob/master/test.c)
         /// </summary>
         public static readonly List<ParserTest> Tests = new List<ParserTest>()
         {
+            //Tests ported from ryah's HTTP parser (http://github.com/ry/http-parser/blob/master/test.c)
+
             #region GET Curl
             {
                 new ParserTest(
@@ -123,6 +122,36 @@ namespace PointyTests
                         {"Accept-Charset", "ISO-8859-1,utf-8;q=0.7,*;q=0.7"},
                         {"Keep-Alive", "300"},
                         {"Connection", "keep-alive"}
+                    }, null), false)
+                )
+            },
+            #endregion
+            #region GET Chrome
+            {
+                new ParserTest(
+                    "GET Chrome",
+                    ASCII(
+                        "GET / HTTP/1.1\r\n",
+                        "Host: localhost:8000\r\n",
+                        "Connection: keep-alive\r\n",
+                        "User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.4 (KHTML, like Gecko) Chrome/5.0.375.55 Safari/533.4\r\n",
+                        "Cache-Control: max-age=0\r\n",
+                        "Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5\r\n",
+                        "Accept-Encoding: gzip,deflate,sdch\r\n",
+                        "Accept-Language: en-US,en;q=0.8\r\n",
+                        "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3\r\n",
+                        "\r\n"
+                    ),
+                    new ParseResult(new Request(Methods.Get, Versions.HTTP1_1, "/", new Dictionary<string,string>()
+                    {
+                        {"Host", "localhost:8000"},
+                        {"Connection", "keep-alive"},
+                        {"User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/533.4 (KHTML, like Gecko) Chrome/5.0.375.55 Safari/533.4"},
+                        {"Cache-Control", "max-age=0"},
+                        {"Accept", "application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5"},
+                        {"Accept-Encoding", "gzip,deflate,sdch"},
+                        {"Accept-Language", "en-US,en;q=0.8"},
+                        {"Accept-Charset", "ISO-8859-1,utf-8;q=0.7,*;q=0.3"}
                     }, null), false)
                 )
             },
@@ -334,6 +363,24 @@ namespace PointyTests
                 )
             },
             #endregion
+
+            //Regression tests
+            #region Content-Length: 0
+            {
+                new ParserTest(
+                    "Content-Length: 0",
+                    ASCII(
+                        "GET / HTTP/1.1\r\n",
+                        "Content-Length: 0\r\n",
+                        "\r\n"
+                    ),
+                    new ParseResult(new Request(Methods.Get, Versions.HTTP1_1, "/", new Dictionary<string,string>()
+                    {
+                        {"Content-Length", "0"}
+                    }, null), false)
+                )
+            },
+            #endregion
         };
     }
 
@@ -359,14 +406,14 @@ namespace PointyTests
                 if (result.Response != null)
                 {
                     Tests.Expect(expected.Response.Name, result.Response.Name, "Response name correct");
-                    Tests.Expect(expected.Response.Number, result.Response.Number, "Response HTTP code correct");
+                    Tests.Expect(expected.Response.Code, result.Response.Code, "Response HTTP code correct");
                 }
                 //Compare the request, if it's present
                 else if (result.Request != null)
                 {
                     //check request data
                     Tests.Expect(expected.Request.Version, result.Request.Version, "Request version correct");
-                    Tests.Expect(expected.Request.Path, result.Request.Path, "Request path correct");
+                    Tests.Expect(expected.Request.Uri, result.Request.Uri, "Request URI correct");
                     Tests.Expect(expected.Request.Method, result.Request.Method, "Request method correct");
 
                     //check that headers in the response are correct, and should be present

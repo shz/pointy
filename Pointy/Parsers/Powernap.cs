@@ -29,6 +29,7 @@ using System.IO;
 using System.IO.Compression;
 
 using Pointy.HTTP;
+using Pointy.Parsers.Utils;
 
 namespace Pointy.Parsers
 {
@@ -93,43 +94,8 @@ namespace Pointy.Parsers
             Done
         }
 
-        //Decodes ASCII
-        static readonly char[] ASCII = new char[]
-        {
-            '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06',
-            '\a', '\b', '\t', '\n', '\v', '\f', '\r', '\x0E', '\x0F', 
-            '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', 
-            '\x17', '\x18', '\x19', '\x1A', '\x1B', '\x1C', '\x1D', 
-            '\x1E', '\x1F', ' ', '!', '"', '#', '$', '%', '&', '\'',
-            '(', ')', '*', '+', '\x2C', '-', '.', '/', '0', '1', '2',
-            '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>',
-            '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-            'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
-            'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b',
-            'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-            'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            '{', '|', '}', '~', '\x7F'
-        };
-        //Decodes ASCII, converting all uppercase chars to lowercase
-        static readonly char[] LowerASCII = new char[]
-        {
-            '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06',
-            '\a', '\b', '\t', '\n', '\v', '\f', '\r', '\x0E', '\x0F', 
-            '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', 
-            '\x17', '\x18', '\x19', '\x1A', '\x1B', '\x1C', '\x1D', 
-            '\x1E', '\x1F', ' ', '!', '"', '#', '$', '%', '&', '\'',
-            '(', ')', '*', '+', '\x2C', '-', '.', '/', '0', '1', '2',
-            '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>',
-            '?', '@', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
-            'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-            'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b',
-            'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-            'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            '{', '|', '}', '~', '\x7F'
-        };
-
         /// <summary>
-        /// Current parser state
+        /// Current parser machine state
         /// </summary>
         ParseStage Stage = ParseStage.Start;
 
@@ -138,22 +104,24 @@ namespace Pointy.Parsers
         //a bit more memory, but unless there's a great need for that
         //I'm not going to worry about it right now.
         
-        //FIXME - Some of the variable names here are bad
-        Methods Method;
+        //Request line stuff
+        Methods       Method;
         StringBuilder URI = new StringBuilder();
         int URISize = 0;
-        StringBuilder HeaderName = new StringBuilder();
-        StringBuilder HeaderValue = new StringBuilder();
-        Dictionary<string, string> Headers = new Dictionary<string,string>();
-        Versions Version;
-
+        Versions      Version;
+        
+        //Headers stuff
         bool DoContinue = false;
         bool InTrailers = false;
+        StringBuilder HeaderName = new StringBuilder();
+        StringBuilder HeaderValue = new StringBuilder();
+        Dictionary<string, string> Headers = new Dictionary<string, string>();
         
-        int ContentLength = 0;
+        //Entity stuff
+        int              ContentLength = 0;
         Utils.UberStream Content = null;
-        Stream CompressionSequence = null;
-        StringBuilder ChunkSize = new StringBuilder();
+        Stream           CompressionSequence = null;
+        StringBuilder    ChunkSize = new StringBuilder();
 
         public Powernap()
         {
@@ -377,7 +345,7 @@ namespace Pointy.Parsers
                         if (b == 0x20 || b == 0x09 || b == 0x0D || b == 0x0A) //Space, horizontal tab, CR, LF
                             return new ParseResult(ParseError.BadRequest);
                         else
-                            URI.Append(ASCII[b]);
+                            URI.Append((char)b);
                         Stage = ParseStage.RequestLine_URI;
                         break;
 
@@ -386,9 +354,13 @@ namespace Pointy.Parsers
                         {
                             Stage = ParseStage.RequestLine_StartVersion;
                         }
+                        else if (b == 0x09 || b == 0x0D || b == 0x0A) //Horizontal tab, CR, LF
+                        {
+                            return new ParseResult(ParseError.BadRequest);
+                        }
                         else
                         {
-                            URI.Append(ASCII[b]);
+                            URI.Append((char)b);
 
                             //Make sure the URI isn't ridiculously long.  This also serves
                             //as a mechanism for ensuring a malformed request won't cause
@@ -397,7 +369,7 @@ namespace Pointy.Parsers
                             //I'm using another variable rather than the StringBuilder's length
                             //because I figure 4 bytes is worth the small (if anything) performance
                             //increase.  Probably should have done some profiling before doing this...
-                            if (++URISize > 1024) 
+                            if (++URISize > 1024)
                                 return new ParseResult(ParseError.RequestURITooLong);
                         }
                         break;
@@ -493,7 +465,7 @@ namespace Pointy.Parsers
                         if (b == 0x3A) // :
                             Stage = ParseStage.Header_ValueStart;
                         else
-                            HeaderName.Append(ASCII[b]);
+                            HeaderName.Append((char)b);
                         break;
                     case ParseStage.Header_ValueStart:
                         if (b != 0x20 && b != 0x09) //Space, HTab
@@ -510,7 +482,7 @@ namespace Pointy.Parsers
                         if (b == 0x0D) //CR
                             Stage = ParseStage.Header_AlmostNewLine;
                         else
-                            HeaderValue.Append(ASCII[b]);
+                            HeaderValue.Append((char)b);
                         break;
                     case ParseStage.Header_AlmostNewLine:
                         if (b == 0x0A) //LF
@@ -537,7 +509,7 @@ namespace Pointy.Parsers
                         }
                         else
                         {
-                            HeaderName.Append(ASCII[b]);
+                            HeaderName.Append((char)b);
                             Stage = ParseStage.Header_Name;
                         }
                         break;
@@ -594,21 +566,30 @@ namespace Pointy.Parsers
 
                                     }
                                 }
+                                
+                                //Check to see if we should expect a body
                                 else if (Headers.ContainsKey("Content-Length"))
                                 {
                                     //grab the content length
                                     if (!Int32.TryParse(Headers["Content-Length"], out ContentLength))
                                         return new ParseResult(ParseError.BadRequest);
 
-                                    //make sure it's within bounds
-                                    if (ContentLength > MaximumEntitySize || ContentLength < 0)
-                                        return new ParseResult(ParseError.RequestEntityTooLarge); //Yeah, or too small...
+                                    if (ContentLength == 0)
+                                    {
+                                        Stage = ParseStage.Done;
+                                    }
+                                    else
+                                    {
+                                        //make sure it's within bounds
+                                        if (ContentLength > MaximumEntitySize || ContentLength < 0)
+                                            return new ParseResult(ParseError.RequestEntityTooLarge); //Yeah, or too small...
 
-                                    //create the content stream
-                                    Content = new Utils.UberStream();
+                                        //create the content stream
+                                        Content = new Utils.UberStream();
 
-                                    //set the state
-                                    Stage = ParseStage.EntityFlat;
+                                        //set the state
+                                        Stage = ParseStage.EntityFlat;
+                                    }
                                 }
                                 else
                                 {
@@ -658,7 +639,7 @@ namespace Pointy.Parsers
                         if (b == 0x0D) //CR
                             Stage = ParseStage.EntityChunked_ChunkSizeCR;
                         else
-                            ChunkSize.Append(LowerASCII[b]);
+                            ChunkSize.Append((char)b);
                         break;
 
                     case ParseStage.EntityChunked_ChunkSizeCR:
@@ -748,18 +729,24 @@ namespace Pointy.Parsers
                             close = true;
                     }
 
-                    //cleanup
-                    URI.Remove(0, URI.Length);
+                    //Request line cleanup
+                    URI.Remove(0, URI.Length); //faster than creating a new SB
                     URISize = 0;
+
+                    //Headers cleanup
                     HeaderName.Remove(0, HeaderName.Length);
                     HeaderValue.Remove(0, HeaderValue.Length);
-                    Headers = new Dictionary<string, string>();
                     DoContinue = false;
                     InTrailers = false;
-                    Stage = ParseStage.Start;
+                    Headers = new Dictionary<string, string>();
+
+                    //Entity cleanup
                     ContentLength = 0;
                     Content = null;
                     CompressionSequence = null;
+
+                    //Misc. cleanup
+                    Stage = ParseStage.Start;
 
                     //and return the response
                     return new ParseResult(request, close);

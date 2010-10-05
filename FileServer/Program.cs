@@ -33,6 +33,7 @@ using System.Net.Mime;
 
 using Pointy;
 using Pointy.HTTP;
+using Pointy.Util;
 using Pointy.Parsers;
 
 //TODO - refactor needed
@@ -70,9 +71,9 @@ namespace Hello_World
             response.Finish();
         }
 
-        public RequestCallback Resolve(ref string path)
+        public RequestCallback Resolve(ref PointyUri uri)
         {
-            string p = path; //TODO - Url unescape
+            string p = uri.Path; //TODO - Url unescape
             return delegate(Request request, Response response)
             {
                 FileAttributes attributes = FileAttributes.Normal;
@@ -81,6 +82,7 @@ namespace Hello_World
                 {
                     cPath = Path.Combine(BasePath, p.Substring(1));
                     attributes = File.GetAttributes(cPath);
+                    Console.WriteLine(cPath + ": " + p);
                 }
                 catch (Exception err)
                 {
@@ -130,15 +132,15 @@ namespace Hello_World
                     response.SendBody("<h2>Directories</h2><ul>");
                     foreach (string dir in dirs)
                         //The substring here is an attempt to arrive at a correct relative path.  This is not trivial to do
-                        //in .NET, but the hack is good enough for an example
-                        response.SendBody(string.Format("<li><a href=\"{0}\">{0}</a></li>", dir.Substring(cPath.Length + 1)));
+                        //in .NET, but the hack is good enough for an example.
+                        response.SendBody(string.Format("<li><a href=\"{0}/\">{0}</a></li>", dir.Substring(cPath.Length)));
 
                     //write the files
                     response.SendBody("</ul><h2>Files</h2><ul>");
                     foreach (string file in files)
                         //The substring here is an attempt to arrive at a correct relative path.  This is not trivial to do
-                        //in .NET, but the hack is good enough for an example
-                        response.SendBody(string.Format("<li><a href=\"{0}\">{0}</a></li>", file.Substring(cPath.Length + 1)));
+                        //in .NET, but the hack is good enough for an example.
+                        response.SendBody(string.Format("<li><a href=\"{0}\">{0}</a></li>", file.Substring(cPath.Length)));
 
                     //wrap up
                     response.SendBody("</ul></body></html>");
@@ -149,20 +151,7 @@ namespace Hello_World
                 else
                 {
                     FileInfo fInfo = new FileInfo(cPath);
-                    Stream stream = null;
                     byte[] buffer = new byte[1024 * 8];
-
-                    try
-                    {
-                        stream = fInfo.OpenRead(); 
-                    }
-                    catch (Exception)
-                    {
-                        //This could be handled a bit more nicely, but for the purposes of this
-                        //example, calling it a server error works just fine
-                        Error(response, 500, "Error opening file for reading");
-                        return;
-                    }
 
                     //Write some basic info
                     response.Start(200);
@@ -171,47 +160,11 @@ namespace Hello_World
                     response.SendHeader("Content-Type", Pointy.Util.MimeTypes.ByExtension(fInfo.Extension));
                     response.SendHeader("Last-Modified", fInfo.LastWriteTime.ToString("r"));
 
-                    //start the aynsc read operations
-                    AsyncCallback callback = null;
-                    Action<object> doRead = null;   //.NET 2.0 only gives us the single-argument Action :(
+                    //Send the file
+                    response.SendFile(fInfo.FullName);
 
-                    doRead = delegate(object n)
-                    {
-                        stream.BeginRead(buffer, 0, buffer.Length, callback, null);
-                    };
-                    callback = delegate(IAsyncResult result)
-                    {
-                        try
-                        {
-                            int read = stream.EndRead(result);
-                            //0 bytes = EOF
-                            if (read == 0)
-                            {
-                                stream.Close();
-                                response.Finish();
-                            }
-                            else
-                            {
-                                //Using an if statement here allows us to stop performing IO operations
-                                //if something goes wrong while sending the data to the client
-                                if (response.SendBody(new ArraySegment<byte>(buffer, 0, read)))
-                                {
-                                    doRead(null);
-                                }
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            //If there's an error thrown once we've already started
-                            //sending the response to the client, we have no choice
-                            //but to abort.
-                            response.Abort();
-                        }
-                    };
-
-                    //Start the reading process
-                    doRead(null);
-                    
+                    //Finish up
+                    response.Finish();
                 }
             };
         }
@@ -228,10 +181,10 @@ namespace Hello_World
                 return;
             }
 
-            using (Server<Powernap> server = new Server<Powernap>(new FileServer(args[0]), 8000))
+            using (Server<Powernap> server = new Server<Powernap>(new FileServer(args[0])))
             {
                 //Start listening for requests
-                server.Start();
+                server.Start(8000);
 
                 Console.Clear();
                 Console.WriteLine("Server started");

@@ -21,6 +21,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// TODO - refactor SendFile and SendBody to share code
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -53,7 +55,7 @@ namespace Pointy.HTTP
     /// and body is optional.
     /// 
     /// Every call to one of Response's methods returns a bool, indicating if the call was successful.  If a method
-    /// returns false, it indicated that some exception occurred on the socket that prevented network IO from
+    /// returns false, it indicates that some exception occurred on the socket that prevented network IO from
     /// successfully completing.  When this happens the underlying socket is cleanly disconnected, and any further
     /// method calls will fail silently, returning false as well.  This allows an application to forego
     /// error handling logic when using the class, though for performance reasons error checking is preferred.  Note
@@ -128,8 +130,10 @@ namespace Pointy.HTTP
         HTTP.Versions Version;
         bool Disconnect;
         int ContentLength = -1;
+
         bool TransferEncodingHeaderSent = false;
-        bool ConnectionHeaderSent = false;
+        bool ConnectionHeaderSent       = false;
+
         FreeSocketCallback FreeSocket;
 
         public Response(Socket socket, bool disconnect, HTTP.Versions version, FreeSocketCallback freeSocket)
@@ -548,6 +552,87 @@ namespace Pointy.HTTP
         public void Abort()
         {
             Error();
+        }
+
+        public bool SendFile(string path)
+        {
+            //Make sure we have the correct response state
+            if (SockError)
+                return false;
+            else if (State == ResponseState.Done)
+                throw new HttpViolationException("Response has already been sent to the client");
+            else if (State == ResponseState.ResponseLine)
+                throw new HttpViolationException("Response has not been started yet");
+            else if (State == ResponseState.Trailers)
+                throw new HttpViolationException("Can't send more body data after trailers");
+
+            //If we have no Content-Length...
+            if (ContentLength < 0)
+            {
+                //... and we're using HTTP/1.1, we default to chunked transfer-encoding.
+                //If the user hasn't already sent the header, do it for them.  A nice bonus
+                //here is that by RFC2616, if Transfer-Encoding is sent it must include
+                //chunked, and chunked must be the last encoding applied.  This means that
+                //unless the user is breaking the spec, our chunked handling WILL work...
+                if (Version == HTTP.Versions.HTTP1_1 && !TransferEncodingHeaderSent)
+                {
+                    if (!SendHeader("Transfer-Encoding", "chunked"))
+                        return false;
+                }
+                //Streaming with HTTP requires some work
+                else if (Version == Versions.HTTP1_0)
+                {
+                    //Can't support keep alive while streaming
+                    Disconnect = true;
+                }
+            }
+            //If we're using HTTP/1.0 keep-alive, we need to add it as a header
+            else if (Version == Versions.HTTP1_0 && Disconnect == false)
+            {
+                //If the user sets the Connection header, we assume no keep-alive
+                //FIXME: If the user sends Connection: Keep-Alive, don't disconnect
+                if (ConnectionHeaderSent)
+                    Disconnect = true;
+                else
+                    if (!SendHeader("Connection", "Keep-Alive"))
+                        return false;
+            }
+
+            //If we're just writing the first body piece, write a CRLF to
+            //signal the end of the headers (RFC2616 6)
+            if (State == ResponseState.Headers)
+                Send(CRLF);
+
+            //If we're in chunked mode, send the chunk length
+            //TODO
+            //if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
+            //    Send(string.Format("{0:x}\r\n", data.Count));
+
+            try
+            {
+                ClientSocket.BeginSendFile(path, delegate(IAsyncResult result)
+                {
+                    try
+                    {
+                        ClientSocket.EndSendFile(result);
+                    }
+                    catch
+                    {
+                        Error();
+                    }
+                }, null);
+
+                //If we're in chunked mode, send another CRLF to polish off the chunk
+                if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
+                    Send(CRLF);
+
+                State = ResponseState.Body;
+                return true;
+            }
+            catch
+            {
+                return Error();
+            }
         }
     }
 }

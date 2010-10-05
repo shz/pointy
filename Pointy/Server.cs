@@ -24,16 +24,23 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Net.Security;
 using System.Text;
+using System.IO;
 
 using Pointy.HTTP;
+using Pointy.Util;
 
 namespace Pointy
 {
     public delegate void RequestCallback(Request reqeust, Response handler);
     public delegate void FreeSocketCallback(Socket socket);
 
-    public class Server<P> : IDisposable where P : IParser, new()
+    /// <summary>
+    /// The Pointy HTTP Server.
+    /// </summary>
+    /// <typeparam name="P">Parser to use</typeparam>
+    public sealed class Server<P> : IDisposable where P : IParser, new()
     {
         Socket Sock;
         volatile bool Running;
@@ -41,44 +48,19 @@ namespace Pointy
 
         IList<Socket> ActiveSockets;
 
-        public Server(IUrlDispatcher dispatcher, int port)
+        public Server(IUrlDispatcher dispatcher)
         {
-            //Set up the main socket
-            System.Net.IPEndPoint endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Any, port);
-            Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-            Sock.Bind(endpoint);
-
             Dispatcher = dispatcher;
             ActiveSockets = new List<Socket>();
+        }
+        ~Server()
+        {
+            Dispose();
         }
         public void Dispose()
         {
             //This is probably a bad implementation, but the problem lies in Stop.
             //TODO - In make sure Stop won't throw an exception, and then all is well
-            Stop();
-        }
-
-        /// <summary>
-        /// Starts the Pointy server.
-        /// </summary>
-        public void Start()
-        {
-            //Handle the running state
-            if (!Running)
-                Running = true;
-            else
-                throw new Exception("Server is already running");
-
-            //Start accepting connections
-            Sock.Listen(100);   
-            Sock.BeginAccept(new AsyncCallback(AcceptCallback), MakeParser());
-        }
-        /// <summary>
-        /// Stops the Pointy server, closing all active connections
-        /// and freeing all resources
-        /// </summary>
-        public void Stop()
-        {
             if (Running)
             {
                 Running = false;
@@ -94,6 +76,43 @@ namespace Pointy
 
                 Sock.Close();
             }
+            GC.SuppressFinalize(this);
+        }
+        
+        /// <summary>
+        /// Starts the Pointy server, using the default port (80 for standard HTTP, 443 if using SSL)
+        /// </summary>
+        public void Start()
+        {
+            Start(80);
+        }
+        /// <summary>
+        /// Starts the Pointy server on the specified port.
+        /// </summary>
+        public void Start(int port)
+        {
+            //Handle the running state
+            if (!Running)
+                Running = true;
+            else
+                throw new Exception("Server is already running");
+
+            //Set up the main socket
+            System.Net.IPEndPoint endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Any, port);
+            Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+            Sock.Bind(endpoint);
+
+            //Start accepting connections
+            Sock.Listen(100);   
+            Sock.BeginAccept(new AsyncCallback(AcceptCallback), MakeParser());
+        }
+        /// <summary>
+        /// Stops the Pointy server, closing all active connections
+        /// and freeing all resources
+        /// </summary>
+        public void Stop()
+        {
+            Dispose();
         }
 
         /// <summary>
@@ -143,18 +162,18 @@ namespace Pointy
                 if (result.Response != null)
                 {
                     //TODO - write the "info" to the response body
-                    socket.Send(Encoding.ASCII.GetBytes(string.Format("HTTP/1.1 {0} {1}\r\n\r\n", result.Response.Number, result.Response.Name)));
+                    socket.Send(Encoding.ASCII.GetBytes(string.Format("HTTP/1.1 {0} {1}\r\n\r\n", result.Response.Code, result.Response.Name)));
                     if (result.Close)
                         FreeSocket(socket);
                 }
                 else if (result.Request != null)
                 {
-                    string path = result.Request.Path;
-                    RequestCallback callback = Dispatcher.Resolve(ref path);
+                    PointyUri uri = result.Request.Uri;
+                    RequestCallback callback = Dispatcher.Resolve(ref uri);
 
                     //update the path, making it relative to the path used to
                     //assign the callback in the dispatcher
-                    result.Request.Path = path;
+                    result.Request.Uri = uri;
 
                     //execute the callback
                     callback(result.Request, new Response(socket, result.Close, result.Request.Version, this.FreeSocket));
@@ -164,6 +183,7 @@ namespace Pointy
 
         #region Socket Callbacks
 
+        // These are just a bit too big to use as inline delegates
         void AcceptCallback(IAsyncResult result)
         {
             IParser parser = result.AsyncState as IParser;

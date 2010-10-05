@@ -1,47 +1,35 @@
-﻿Paths/URIs - Right now the Request class uses a string for the requested resource path, but this should be
-             changed to use the System.Uri class.  I'll have to write a custom parser, since the builtin
-			 Uri constructor is totally useless for relative URIs, which we have to deal with.
+﻿Tests      - Add tests for Safari, IE8
+Parsing    - Refactor the interface.  A few areas could be tightened up (somewhat done?).
 
-			 Probably going to use Ragel for this, based on RFC1808's BNF.
-
-Tests      -  Add tests for Chrome, Safari, IE8
-
-Parsing    - Refactor the interface.  It's a little wonky right now, and needs to be changed to
-             support HTTP pipelining
-
-Food for thought:  Right now, I'm reimplementing some functionality that's in System.Web.  I sort of
-				   want to keep doing this, and I sort of don't; while some of the utility classes are
-				   great, other are tied really closely to ASP.NET.  Additionally, while some of these
-				   classes would be great to use in the parsing API and such, a few are sealed, which
-				   means I'll have to reimplement them anyway.
-
-				   In the end, I feel that I should either go all-BCL, or all-Pointy.  I'm leaning
-				   towards the Pointy option, but I need to make a decision real soon now...
 
 Done by 1.0:
 
 - Add utilties
-    - Provide reasonably flexible, tested UrlDispatcher
 	- multipart/form-data parsing
-	- URLescaping (maybe)
-- Do proper URI parsing
-- Finish XML docs (mostly done already)
-- Make sure there are comprehensive docs
+    - x-www-form-urlencoded
 - More tests (Especially for UberStream)
 - API freeze
+- Proper error handling in URI parsing
+- I don't like the location of PointyURI, namespace wise
+- Fix up example physical directories
+- Double-check proper event handling disposal; memory leaks are bad :(
 
 Done by 1.1:
-- HTTP Pipelining
-	- This will require a breaking change in the parser API (so this portion should be complete by 1.0)
-	- The main problem is supporting request streaming over a pipelined connection.  With multiple
-	  threads responding to requests, order is not guaranteed automatically.  This is especially
-	  an issue with response streaming.  The solution is simple in concept: don't stream the output.
-	  Instead, simply cache the streaming output temporarily, and send it once the preceeding requests
-	  are finished.  This works fine, though will obviously be a little sticky to implement.  Some sort
-	  of checking will have to be done on the ordering of requests coming from each socket.
-
+- Good documentation (human, XML docs)
+- More tests
 - Helpers
     - Wrappers for Pointy URL dispatchers that handle common tasks
 	    - A thread pooling dispatcher that fires response callbacks
 		  outside of the socket async threads
 	    - A "simple" wrapper that provides a non-streaming response API
+
+Done by 1.2:
+- SSL
+- IPv6 in URI parsing
+- IPv6 support in server
+
+Distant future:
+- Event-driven server implementation, similar to node.js.  This will require a more "open" parser and
+  some large changes to the internals, but will give a large boost to flexibility.
+- Aggresive Powernap optimizations.  Method-based profiling has been done already, but the actual state
+  machine hasn't been optimized at all yet, which might let us squeeze some more performance out of it.

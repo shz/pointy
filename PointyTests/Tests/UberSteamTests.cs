@@ -1,5 +1,5 @@
-﻿// Program.cs
-// Test launcher for Pointy
+﻿// Tests/UberSteamTests.cs
+// Tests for Pointy's UberStream class
 
 // Copyright (c) 2010 Patrick Stein
 //
@@ -27,26 +27,15 @@ using System.Text;
 
 namespace PointyTests
 {
-    class Program
+    class UberSteamTests
     {
-        static void Main(string[] args)
+        public static void TestUberStream()
         {
-            Tests.PushTest("PointyUri");
-            PointyUriTests.Run();
-            Tests.PopTest();
+            Tests.PushTest("UberSteam");
 
-            Tests.PushTest("UrlEncoding");
-            UrlEncodingTests.Run();
-            Tests.PopTest();
-            
-            Tests.PushTest("Powernap");
-            ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 100000});
-            Tests.PopTest();
+            //TODO - write some tests!
 
-            Tests.OutputConsole();
-
-            Console.WriteLine("Press any key to continue");
-            Console.ReadKey();
+            Tests.PopTest();
         }
     }
 }

@@ -26,6 +26,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
+using Pointy.Util;
+
 namespace Pointy.HTTP
 {
     /// <summary>
@@ -35,7 +37,7 @@ namespace Pointy.HTTP
     {
         Methods _Method;
         Versions _Version;
-        string _Path;
+        PointyUri _Uri;
         Dictionary<string, string> _Headers;
         Stream _Entity;
 
@@ -63,15 +65,15 @@ namespace Pointy.HTTP
         /// Request path
         /// NOTE: The type of this property will be changing in the future to a subtype of System.Uri
         /// </summary>
-        public string Path
+        public PointyUri Uri
         {
             get
             {
-                return _Path;
+                return _Uri;
             }
             set
             {
-                _Path = value;
+                _Uri = value;
             }
         }
         /// <summary>
@@ -107,9 +109,10 @@ namespace Pointy.HTTP
         {
             _Method = method;
             _Version = version;
-            _Path = path;
             _Headers = headers;
             _Entity = entity;
+
+            _Uri = new Util.PointyUri(path);
         }
     }
 }

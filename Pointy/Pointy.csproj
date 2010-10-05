@@ -69,12 +69,15 @@
     <Compile Include="IUrlDispatcher.cs" />
     <Compile Include="Util\MimeTypes.cs" />
     <Compile Include="Util\MultipartFormData.cs" />
-    <Compile Include="Util\UrlEncoder.cs" />
+    <Compile Include="Util\UrlEncoding.cs" />
+    <Compile Include="Util\PointyUri.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Util\URIParser.rl" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

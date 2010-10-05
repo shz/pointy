@@ -30,9 +30,10 @@ using System.Collections.Generic;
 namespace PointyTests
 {
     /// <summary>
-    /// This is a little test framework I developed due to disliking little things about other testing frameworks.
+    /// This is a little test framework I developed due to disliking things about other testing frameworks.  It's
+    /// not really intended to be portable or anything, but rather to be used exclusively with Pointy.
     /// 
-    /// It's not really intended to be portable or anything, but rather to be used exclusively with Pointy.
+    /// The core principle is nested stacks.
     /// </summary>
     static class Tests
     {
@@ -178,7 +179,7 @@ namespace PointyTests
             {
 
             }
-            public ExpectTest(Test parent, object expect, object check, string message) : base(message, parent, expect == null ? check == null : expect.Equals(check))
+            public ExpectTest(Test parent, object expect, object check, string message) : base(String.Format(message, expect), parent, expect == null ? check == null : expect.Equals(check))
             {
                 this.Details = string.Format("Expected {0}, got {1}", expect, check);
             }

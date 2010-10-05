@@ -25,6 +25,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
+using Pointy.Util;
+
 namespace Pointy
 {
     public interface IUrlDispatcher
@@ -38,6 +40,6 @@ namespace Pointy
         /// 
         /// </remarks>
         /// <returns></returns>
-        RequestCallback Resolve(ref string path);
+        RequestCallback Resolve(ref PointyUri uri);
     }
 }

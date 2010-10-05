@@ -1,5 +1,6 @@
 ﻿// Parsers/Utils.cs
-// HTTP parser utilities
+// Internal HTTP parser utilities.  Implementors of new parser backends
+// may want to use some of the code here for laziness' sake.
 
 // Copyright (c) 2010 Patrick Stein
 //
@@ -26,10 +27,21 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
-//TODO - Unit test this sucker
-
 namespace Pointy.Parsers.Utils
 {
+    /// <summary>
+    /// Some error HTTP responses, used internally by Powernap.
+    /// </summary>
+    static class ParseError
+    {
+        public static readonly ParseResponse BadRequest = new ParseResponse(400, "Bad Request");
+        public static readonly ParseResponse RequestEntityTooLarge = new ParseResponse(414, "Request Entity Too Large");
+        public static readonly ParseResponse RequestURITooLong = new ParseResponse(414, "Request-URI Too Long");
+        public static readonly ParseResponse UnsupportedMediaType = new ParseResponse(415, "Unsupported Media Type");
+        public static readonly ParseResponse NotImplemented = new ParseResponse(501, "Not Implemented");
+        public static readonly ParseResponse HTTPVersionNotSupported = new ParseResponse(505, "HTTP Version Not Supported");
+    }
+
     /// <summary>
     /// Read-only stream implementation using ArraySegments as a backing store.
     /// 
@@ -52,8 +64,8 @@ namespace Pointy.Parsers.Utils
     class UberStream : Stream
     {
         LinkedList<ArraySegment<byte>> Segments = new LinkedList<ArraySegment<byte>>();
-        long _Length = 0;
         LinkedListNode<ArraySegment<byte>> CurrentNode = null;
+        long _Length = 0;
         int CurrentOffset = 0;
 
         public override bool CanRead
@@ -100,7 +112,7 @@ namespace Pointy.Parsers.Utils
             }
             set
             {
-                //TODO - there's probably a better way to describe the exception
+                //FIXME - there's probably a better way to describe the exception
                 if (CurrentNode == null)
                     throw new IOException("Stream is empty");
 

@@ -17,12 +17,12 @@ namespace Pointy.Util
         public static string ByExtension(string extension)
         {
             //Strip the leading . if it's present
-            if (extension[0] == '.')
+            if (extension.Length > 0 && extension[0] == '.')
                 extension = extension.Substring(1);
 
             //And now, a massive switch statement.
             //NOTE - If we migrate to 3.0, change this to be a static dictionary
-            //built using a collection initializer
+            //       built using a collection initializer.
             //This list built from 
             // - http://www.webmaster-toolkit.com/mime-types.shtml
             //Keep it sorted

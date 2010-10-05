@@ -36,7 +36,7 @@ namespace Pointy
     {
         public static readonly ParseResponse Continue = new ParseResponse(100, "Continue", null);
 
-        public ushort Number
+        public ushort Code
         {
             get;
             set;
@@ -52,28 +52,16 @@ namespace Pointy
             set;
         }
 
-        public ParseResponse(ushort number, string name) : this(number, name, null)
+        public ParseResponse(ushort code, string name) : this(code, name, null)
         {
 
         }
-        public ParseResponse(ushort number, string name, string info)
+        public ParseResponse(ushort code, string name, string info)
         {
-            Number = number;
+            Code = code;
             Name = name;
             Info = info;
         }
-    }
-    /// <summary>
-    /// Some error HTTP responses
-    /// </summary>
-    static class ParseError
-    {
-        public static readonly ParseResponse BadRequest = new ParseResponse(400, "Bad Request");
-        public static readonly ParseResponse RequestEntityTooLarge = new ParseResponse(414, "Request Entity Too Large");
-        public static readonly ParseResponse RequestURITooLong = new ParseResponse(414, "Request-URI Too Long");
-        public static readonly ParseResponse UnsupportedMediaType = new ParseResponse(415, "Unsupported Media Type");
-        public static readonly ParseResponse NotImplemented = new ParseResponse(501, "Not Implemented");
-        public static readonly ParseResponse HTTPVersionNotSupported = new ParseResponse(505, "HTTP Version Not Supported");
     }
 
     /// <summary>
@@ -154,11 +142,11 @@ namespace Pointy
         /// will not be modified by Pointy once it has been sent to the parser.
         /// </summary>
         /// <param name="data">
-        /// 
+        /// Data being sent to be parsed
         /// </param>
         /// <returns>
         /// A ParseResult object if the parser has information to pass back to Pointy
-        /// or null if the data has been consumed without any information being passed.
+        /// or null if the data has been consumed without an error or request being consumed.
         /// </returns>
         ParseResult AddBytes(ArraySegment<byte> data);
     }

@@ -1,5 +1,6 @@
-﻿// Examples/Hello World/Program.cs
-// Simple "Hello World" example for Pointy
+﻿// MicroBenchmarks/Program.cs
+// A collection of benchmarks used for optimizations and similar tasks in
+// the construction of Pointy.  Included in the source tree for posterity.
 
 // This is free and unencumbered software released into the public domain.
 //
@@ -24,53 +25,19 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-using Pointy;
-using Pointy.HTTP;
-using Pointy.Util;
+using MicroBenchmarks.Benchmarks;
 
-namespace Hello_World
+namespace MicroBenchmarks
 {
-    class CatchAll : IUrlDispatcher
-    {
-        public RequestCallback Resolve(ref PointyUri uri)
-        {
-            return delegate(Request request, Response response)
-            {
-                response.Start();
-                response.SendHeader("Content-Type", "text/plain; charset=utf-8");
-                response.SendBody("Hello World!");
-                response.Finish();
-            };
-        }
-    }
-
     class Program
     {
         static void Main(string[] args)
         {
-            using (var server = new Server<Pointy.Parsers.Powernap>(new CatchAll()))
-            {
-                //Start listening for requests
-                server.Start(8000);
-
-                Console.WriteLine("Server started");
-                Console.WriteLine("Listening on port 8000");
-                Console.WriteLine("Press CTRL+C to exit");
-                Console.TreatControlCAsInput = true;
-
-                //Run until the user exits
-                while (true)
-                {
-                    ConsoleKeyInfo key = Console.ReadKey(true);
-                    if (key.Modifiers == ConsoleModifiers.Control && key.Key == ConsoleKey.C)
-                        break;
-                }
-            }
+            ASCIIConversion.Run();
         }
     }
 }
