@@ -31,6 +31,20 @@ namespace Pointy.Util
         /// <returns>URL encoded string</returns>
         public static string Encode(string str)
         {
+            return Encode(str, true);
+        }
+        /// <summary>
+        /// Performs URL encoding on a string
+        /// </summary>
+        /// <param name="str">String to be URL encoded</param>
+        /// <param name="oldSpaces">If true, spaces are converted to '+' rather than '%20'</param>
+        /// <returns>URL encoded string</returns>
+        public static string Encode(string str, bool oldSpaces)
+        {
+            //do backwards-compatible space handling
+            if (oldSpaces)
+                str = str.Replace(' ', '+');
+
             return EscapeRegex.Replace(str, delegate (Match match)
             {
                 //replace the matches value with its %-hex equivalent
@@ -46,6 +60,20 @@ namespace Pointy.Util
         /// <returns>Unencoded string</returns>
         public static string Decode(string str)
         {
+            return Decode(str, true);
+        }
+        /// <summary>
+        /// Decodes a URL encoded string
+        /// </summary>
+        /// <param name="str">URL encoded string</param>
+        /// <param name="oldSpaces">If true, '+' characters will be converted to spaces</param>
+        /// <returns>Unencoded string</returns>
+        public static string Decode(string str, bool oldSpaces)
+        {
+            //do backwards-compatible space handling
+            if (oldSpaces)
+                str = str.Replace('+', ' ');
+
             return UnescapeRegex.Replace(str, delegate(Match match)
             {
                 //grab the hex number, parse it to a byte, and cast to a char
