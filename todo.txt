@@ -7,7 +7,9 @@ Done by 1.0:
 - Add utilties
 	- multipart/form-data parsing
     - x-www-form-urlencoded
-- More tests (Especially for UberStream)
+- More tests
+    - clean up tests a bit
+    - use new DictCompare method
 - API freeze
 - Proper error handling in URI parsing
 - I don't like the location of PointyURI, namespace wise

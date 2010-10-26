@@ -63,9 +63,9 @@
     <Compile Include="Framework.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Tests\FormUrlencodedTests.cs" />
     <Compile Include="Tests\ParserTests.cs" />
     <Compile Include="Tests\PointyUriTests.cs" />
-    <Compile Include="Tests\UberSteamTests.cs" />
     <Compile Include="Tests\UrlEncodingTests.cs" />
   </ItemGroup>
   <ItemGroup>

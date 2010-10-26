@@ -1,5 +1,5 @@
-﻿// Tests/UrlEncodingTests.cs
-// Tests for Pointy's Util.UrlEncoding class
+﻿// Tests/FormUrlencodedTests.cs
+// Tests for Pointy's Util.FormUrlencoded class
 
 // Copyright (c) 2010 Patrick Stein
 //
@@ -26,50 +26,40 @@ using System.Collections.Generic;
 using System.Text;
 
 using Pointy.Util;
-using PointyTests.UrlEncodingTest;
+using PointyTests.FormUrlencodingTest;
 
 namespace PointyTests
 {
-    public class UrlEncodingTests
+    class FormUrlencodedTests
     {
         /// <summary>
-        /// Tests UrlEncoding.Encode
+        /// Tests FormUrlencoded.Parse
         /// </summary>
-        static Test[] EncodingTests = new Test[]
+        static Test[] ParsingTests = new Test[]
         {
-            new Test("No Escaping", "abc123", "abc123"),
-            new Test("Basic Escaping", "foobar-$$%", "foobar-%24%24%25"),
-            new Test("Control Character Escaping", "\x02\x03\x04", "%02%03%04"),
-            new Test("Extended ASCII Escaping", "bb\xE4\xF1", "bb%e4%f1"),
+            new Test("Single entry", "foo=bar", new Dictionary<string,string>()
+            {
+                {"foo", "bar"}
+            }),
+            new Test("Multiple entries", "foo=bar&baz=bam", new Dictionary<string,string>()
+            {
+                {"foo", "bar"},
+                {"baz", "bam"}
+            }),
+            new Test("Escaping", "foo%3D=bar", new Dictionary<string,string>()
+            {
+                {"foo=", "bar"}
+            })
         };
 
-        /// <summary>
-        /// Tests UrlEncoding.Decode
-        /// </summary>
-        static Test[] DecodingTests = new Test[]
-        {
-            new Test("No Escaping", "abc123", "abc123"),
-            new Test("Basic Escaping", "foobar-%24%24%25", "foobar-$$%"),
-            new Test("Control Character Escaping", "%02%03%04", "\x02\x03\x04"),
-            new Test("Extended ASCII Escaping", "bb%e4%f1", "bb\xE4\xF1"),
-        };
 
         public static void Run()
         {
-            Tests.PushTest("Encoding Tests");
-            for (int i = 0; i < EncodingTests.Length; i++)
+            Tests.PushTest("Parsing Tests");
+            for (int i = 0; i < ParsingTests.Length; i++)
             {
-                Tests.PushTest(EncodingTests[i].Name);
-                Tests.Expect(EncodingTests[i].Output, UrlEncoding.Encode(EncodingTests[i].Input));
-                Tests.PopTest();
-            }
-            Tests.PopTest();
-
-            Tests.PushTest("Decoding Tests");
-            for (int i = 0; i < DecodingTests.Length; i++)
-            {
-                Tests.PushTest(DecodingTests[i].Name);
-                Tests.Expect(DecodingTests[i].Output, UrlEncoding.Decode(DecodingTests[i].Input));
+                Tests.PushTest(ParsingTests[i].Name);
+                Tests.DictCompare<string, string>(ParsingTests[i].Output, FormUrlencoded.Parse(ParsingTests[i].Input));
                 Tests.PopTest();
             }
             Tests.PopTest();
@@ -78,7 +68,7 @@ namespace PointyTests
 }
 
 // Contains the Test class
-namespace PointyTests.UrlEncodingTest
+namespace PointyTests.FormUrlencodingTest
 {
     class Test
     {
@@ -92,13 +82,13 @@ namespace PointyTests.UrlEncodingTest
             get;
             set;
         }
-        public string Output
+        public Dictionary<string, string> Output
         {
             get;
             set;
         }
 
-        public Test(string name, string input, string output)
+        public Test(string name, string input, Dictionary<string, string> output)
         {
             Name = name;
             Input = input;

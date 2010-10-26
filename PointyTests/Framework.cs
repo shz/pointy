@@ -199,6 +199,8 @@ namespace PointyTests
             Current = Current.Parent;
         }
 
+        // Testing methods
+
         /// <summary>
         /// Test that the given expected object matches the given object
         /// </summary>
@@ -229,6 +231,40 @@ namespace PointyTests
                 return check == null;
             else
                 return expect.Equals(check);
+        }
+
+        /// <summary>
+        /// Tests that two dictionaries are equal, looking for missing keys, unequal values, and extra keys.
+        /// </summary>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <param name="expect"></param>
+        /// <param name="compare"></param>
+        /// <returns></returns>
+        public static bool DictCompare<TKey, TValue>(Dictionary<TKey, TValue> expect, Dictionary<TKey, TValue> check)
+        {
+            bool passed = true;
+
+            //look for missing/unequal keys
+            foreach (TKey key in expect.Keys)
+            {
+                //make sure the key exists
+                if (!check.ContainsKey(key))
+                    passed &= Result(false, string.Format("Contains key '{0}'", key));
+                //compare values
+                else
+                    passed &= Expect(expect[key], check[key], string.Format("Value for key '{0}' is '{1}'", key, expect[key]));
+            }
+
+            //look for extra keys in the check that shouldn't be there
+            foreach (TKey key in check.Keys)
+            {
+                //fail if the key isn't present in expect
+                if (!expect.ContainsKey(key))
+                    passed &= Result(false, string.Format("Extra key '{0}' (value '{1}')", key, check[key]));
+            }
+
+            return passed;
         }
 
         /// <summary>

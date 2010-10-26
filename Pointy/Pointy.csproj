@@ -67,6 +67,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="IUrlDispatcher.cs" />
+    <Compile Include="Util\FormUrlencoded.cs" />
     <Compile Include="Util\MimeTypes.cs" />
     <Compile Include="Util\MultipartFormData.cs" />
     <Compile Include="Util\UrlEncoding.cs" />

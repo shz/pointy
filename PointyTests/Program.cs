@@ -38,10 +38,18 @@ namespace PointyTests
             Tests.PushTest("UrlEncoding");
             UrlEncodingTests.Run();
             Tests.PopTest();
-            
+
+            Tests.PushTest("FormUrlencoded");
+            FormUrlencodedTests.Run();
+            Tests.PopTest();
+
             Tests.PushTest("Powernap");
             ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 100000});
             Tests.PopTest();
+
+            // UberStream is a prime candidate for testing, but I'm not really too worried about it
+            // at this point.  Its functionality is essentially covered by the Powernap tests, given
+            // the robustness of the entity testing.
 
             Tests.OutputConsole();
 
