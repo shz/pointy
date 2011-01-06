@@ -40,10 +40,7 @@ the inner HTTP plumbing of these tools than anything else.
 Note that Pointy has received some significant optimizations since this test was run, so
 its performance should be even closer to that of node.js.
 
-In short, the aim is to create through Pointy an open source, cross-platform, fast, flexible, and
-simple HTTP interface for .NET.
-
-See notes.txt for release notes.
+See `notes.txt` for release notes.
 
 == Documentation ==
 Documentation is a bit of a WIP right now.  There *will* be comprehensive docs at some point
