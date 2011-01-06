@@ -1,7 +1,7 @@
-=  Pointy 1.0 =
+#  Pointy 1.0
 A fast, lightweight HTTP frontend for .NET.
 
-== About ==
+## About
 Pointy is still under development.  The API will be fluctuating until version 1.0, at which point
 it will remain stable and backwards-compatible for the entirety of the 1.x series (which may well
 be the only release series to exist, but hey).
@@ -11,7 +11,7 @@ can still be used to create simple web applications without much boilerplate cod
 
 Pointy is coded entirely in C# 2.0, and runs without a hitch on Mono.
 
-=== Features ===
+### Features
 Aside from sporting a simple and clean API, Pointy has the ability to do "streaming" HTTP
 requests.  This is accomplished via chunked encoding for HTTP/1.1, or by proper manipulation
 of HTTP/1.0 connections.  This streaming functionality allows Pointy to send out data as
@@ -23,7 +23,7 @@ Pointy's networking design is also "modern;" the asynchronous socket API is used
 easily scalable concurrency.  This sort of thing is actually pretty easy to do in .NET,
 but it's worth mentioning.
 
-=== Performance ===
+### Performance
 Speed is a major priority for Pointy.  Here's a benchmark of Pointy 8.1 (lacking some
 significant optimizations introduced in 0.9) against Tornado 0.2 (at the time of
 writing, one of the fastest Python web servers available) and node.js 0.1.27 (generally
@@ -42,12 +42,12 @@ its performance should be even closer to that of node.js.
 
 See `notes.txt` for release notes.
 
-== Documentation ==
+## Documentation
 Documentation is a bit of a WIP right now.  There *will* be comprehensive docs at some point
 in the not-so-distance future.  In the meantime, use the XML docs and the example projects
 (located, shockingly, in the `Examples` folder).
 
-== License ==
+## License
 Pointy and its test code are released under the MIT X11 license.
 *An exception is Pointy's Ragel-based URI parser, which is released into the public domain.*
 
