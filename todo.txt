@@ -6,14 +6,12 @@ Done by 1.0:
 
 - Add utilties
 	- multipart/form-data parsing
-    - x-www-form-urlencoded
 - More tests
     - clean up tests a bit
     - use new DictCompare method
 - API freeze
 - Proper error handling in URI parsing
 - I don't like the location of PointyURI, namespace wise
-- Fix up example physical directories
 - Double-check proper event handling disposal; memory leaks are bad :(
 
 Done by 1.1:
@@ -28,10 +26,12 @@ Done by 1.1:
 Done by 1.2:
 - SSL
 - IPv6 in URI parsing
-- IPv6 support in server
+- IPv6 support in server (? I may not need to do anything here)
 
-Distant future:
+Distant future (likely 2.0?):
 - Event-driven server implementation, similar to node.js.  This will require a more "open" parser and
-  some large changes to the internals, but will give a large boost to flexibility.
+  some large changes to the internals, but will give a large boost to flexibility.  Probably
+  best to just ditch the whole "pluggable parser" concept and move on with life.
 - Aggresive Powernap optimizations.  Method-based profiling has been done already, but the actual state
   machine hasn't been optimized at all yet, which might let us squeeze some more performance out of it.
+- Target the 4.0 runtime, and include some improvements from it
