@@ -4,6 +4,7 @@ Parsing    - Refactor the interface.  A few areas could be tightened up (somewha
 
 Done by 1.0:
 
+- Send Server header
 - Add utilties
 	- multipart/form-data parsing
 - More tests
@@ -26,7 +27,7 @@ Done by 1.1:
 Done by 1.2:
 - SSL
 - IPv6 in URI parsing
-- IPv6 support in server (? I may not need to do anything here)
+- IPv6 support in server
 
 Distant future (likely 2.0?):
 - Event-driven server implementation, similar to node.js.  This will require a more "open" parser and
@@ -35,3 +36,4 @@ Distant future (likely 2.0?):
 - Aggresive Powernap optimizations.  Method-based profiling has been done already, but the actual state
   machine hasn't been optimized at all yet, which might let us squeeze some more performance out of it.
 - Target the 4.0 runtime, and include some improvements from it
+

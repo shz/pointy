@@ -4,6 +4,7 @@
 Pointy 1.0
 - Bug Fixes:
     - Fixed issue with requests specifying Content-Length: 0
+    - Fixed parsing error for requests with large entities
 - Full request path parsing with the help of Ragel
 - Added SendFile method to Response API, which should provide
   fast static file serving.

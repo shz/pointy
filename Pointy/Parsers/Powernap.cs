@@ -619,6 +619,8 @@ namespace Pointy.Parsers
                             Content.Append(new ArraySegment<byte>(data.Array, i + data.Offset, data.Count - i));
                             //decrease the remaining byte count
                             ContentLength -= data.Count - i;
+                            //force the loop to end
+                            i = data.Count;
                         }
                         else //the current buffer contains all the data we need
                         {

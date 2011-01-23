@@ -57,7 +57,8 @@
         }
     }
     action fragment_end { _Fragment = path.Substring(start, fpc-start); }
-    
+    action error { /* TODO */ }
+
     # Grammar definition, based mostly on RFC2396
     
     mark        = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")" ;
@@ -105,7 +106,7 @@
     absoluteURL = scheme ":" (net_path | abs_path) ("?" query)? ;
     URL         = ( absoluteURL | relativeURL)? ( "#" fragment >start %fragment_end )? ;
     
-    main := URL;
+    main := URL $err(error);
     
 }%%
 using System;

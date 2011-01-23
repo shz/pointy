@@ -44,7 +44,7 @@ namespace PointyTests
             Tests.PopTest();
 
             Tests.PushTest("Powernap");
-            ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 100000});
+            ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 1024 * 1024 * 10});
             Tests.PopTest();
 
             // UberStream is a prime candidate for testing, but I'm not really too worried about it

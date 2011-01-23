@@ -69,6 +69,14 @@ namespace PointyTests
         {
             return System.Text.Encoding.ASCII.GetBytes(String.Join(String.Empty, strs));
         }
+        static string CharRepeat(char c, int n)
+        {
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < n; i++)
+                b.Append(c);
+            return b.ToString();
+        }
+
         /// <summary>
         /// Holds our test cases.
         /// </summary>
@@ -263,6 +271,25 @@ namespace PointyTests
                     }, new MemoryStream(ASCII
                     (
                         "World"
+                    ))), false)
+                )
+            },
+            #endregion
+            #region POST Large Entity (Regression)
+            {
+                new ParserTest(
+                    "POST Large Entity (Regression)",
+                    ASCII(
+                        "POST / HTTP/1.1\r\n",
+                        "Content-Length: " + (1024 * 1024 * 2).ToString() + "\r\n",
+                        "\r\n",
+                        CharRepeat('z', 1024 * 1024 * 2)
+                    ),
+                    new ParseResult(new Request(Methods.Post, Versions.HTTP1_1, "/", new Dictionary<string,string>()
+                    {
+                        {"Content-Length", (1024 * 1024 * 2).ToString()}
+                    }, new MemoryStream(ASCII(
+                        CharRepeat('z', 1024 * 1024 * 2)
                     ))), false)
                 )
             },
