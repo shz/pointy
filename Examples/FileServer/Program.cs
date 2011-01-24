@@ -73,7 +73,7 @@ namespace Hello_World
 
         public RequestCallback Resolve(ref PointyUri uri)
         {
-            string p = uri.Path; //TODO - Url unescape
+            string p = Pointy.Util.UrlEncoding.Decode(uri.Path, true);
             return delegate(Request request, Response response)
             {
                 FileAttributes attributes = FileAttributes.Normal;

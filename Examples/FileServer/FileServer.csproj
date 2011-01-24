@@ -59,7 +59,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Pointy\Pointy.csproj">
+    <ProjectReference Include="..\..\Pointy\Pointy.csproj">
       <Project>{D2CF6F95-058A-4CB0-9AAE-D8F95CE03710}</Project>
       <Name>Pointy</Name>
     </ProjectReference>
