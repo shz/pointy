@@ -31,6 +31,8 @@ namespace PointyTests
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Running tests...\n");
+
             Tests.PushTest("PointyUri");
             PointyUriTests.Run();
             Tests.PopTest();
