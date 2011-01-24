@@ -5,3 +5,6 @@ obj/
 *.exe.manifest
 *.csproj.user
 *.suo
+*.pidb
+*.userprefs
+
