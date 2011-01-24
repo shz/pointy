@@ -1,0 +1,6 @@
+/*bin/*
+/*obj/*
+*.exe
+*.pdb
+*.exe.manifest
+*.vsproj.user
