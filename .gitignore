@@ -3,5 +3,5 @@ obj/
 *.exe
 *.pdb
 *.exe.manifest
-*.vsproj.user
+*.csproj.user
 *.suo

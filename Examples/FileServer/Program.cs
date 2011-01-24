@@ -157,7 +157,7 @@ namespace Hello_World
                     response.Start(200);
                     response.SendHeader("Content-Length", fInfo.Length.ToString());
                     //Note the lack of unicode detection for plaintext type files
-                    response.SendHeader("Content-Type", Pointy.Util.MimeTypes.ByExtension(fInfo.Extension));
+                    response.SendHeader("Content-Type", Pointy.Util.MimeType.ByExtension(fInfo.Extension).ToString());
                     response.SendHeader("Last-Modified", fInfo.LastWriteTime.ToString("r"));
 
                     //Send the file
