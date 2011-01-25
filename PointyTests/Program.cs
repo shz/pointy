@@ -24,6 +24,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace PointyTests
 {
@@ -31,7 +32,33 @@ namespace PointyTests
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Running tests...\n");
+            Console.Write("Running tests ");
+
+            // Fire up a thread that really just animates a spinny thing while the tests run
+            // so that the user knows things are working.
+            bool running = true;
+            int i = 0;
+            char[] spinner = new char[] { '\\', '|', '/', '-' };
+            Thread t = new Thread(new ThreadStart(delegate
+            {
+                //setup
+                Console.CursorVisible = false;
+
+                while (running)
+                {
+                    //update the spinner
+                    Console.Write(spinner[i]);
+                    Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
+
+                    if (++i > spinner.Length - 1)
+                        i = 0;
+                    Thread.Sleep(150);
+                }
+
+                //cleanup the console
+                Console.Write("- done");
+            }));
+            t.Start();
 
             Tests.PushTest("PointyUri");
             PointyUriTests.Run();
@@ -45,6 +72,10 @@ namespace PointyTests
             FormUrlencodedTests.Run();
             Tests.PopTest();
 
+            Tests.PushTest("MimeType");
+            MimeTypeTests.Run();
+            Tests.PopTest();
+
             Tests.PushTest("Powernap");
             ParserTests.TestParser(new Pointy.Parsers.Powernap() {MaximumEntitySize = 1024 * 1024 * 10});
             Tests.PopTest();
@@ -53,6 +84,12 @@ namespace PointyTests
             // at this point.  Its functionality is essentially covered by the Powernap tests, given
             // the robustness of the entity testing.
 
+            // Stop the spinny thing.
+            running = false;
+            t.Join();
+
+            // Display the results
+            Console.WriteLine('\n');
             Tests.OutputConsole();
 
             Console.WriteLine("Press any key to continue");

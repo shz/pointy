@@ -68,7 +68,7 @@
     <Compile Include="Server.cs" />
     <Compile Include="IUrlDispatcher.cs" />
     <Compile Include="Util\FormUrlencoded.cs" />
-    <Compile Include="Util\MimeTypes.cs" />
+    <Compile Include="Util\MimeType.cs" />
     <Compile Include="Util\MultipartFormData.cs" />
     <Compile Include="Util\UrlEncoding.cs" />
     <Compile Include="Util\PointyUri.cs" />
