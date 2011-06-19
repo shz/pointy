@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Pointy.Util
 {
@@ -9,6 +10,11 @@ namespace Pointy.Util
     /// </summary>
     public class MimeType
     {
+        /// <summary>
+        /// Regex to match MIME header special characters (see RFC2045#5.1)
+        /// </summary>
+        Regex TSpecialsRE = new Regex("[()<>@,;:\\/\"\\[\\]?=]");
+
         string _Type;
         string _Subtype;
         IDictionary<string, string> _Parameters;
@@ -571,7 +577,7 @@ namespace Pointy.Util
                     string[] split = parts[i].Trim().Split(new char[] { '=' }, 2);
                     if (split.Length != 2)
                         return null;
-                    d[split[0]] = split[1];
+                    d[split[0]] = split[1].Trim('"'); //note the trimming of quotes
                 }
 
                 return new MimeType(types[0], types[1], d);
@@ -587,22 +593,18 @@ namespace Pointy.Util
         /// Converts this MIME type to its string representation.
         /// </summary>
         /// <remarks>
-        /// Note that this method will not automatically add quotes around parameter values containing
+        /// Note that this method will automatically add quotes around parameter values containing
         /// special characters.  For example,
         /// 
-        ///     new MimeType("foo", "bar", new Dictionary<string, string>() { {"test", "param()"} }).ToString()
+        ///     new MimeType("foo", "bar", new Dictionary<string, string>() { {"test", "oh:noes"} }).ToString()
         ///     
         /// returns
         /// 
-        ///     foo/bar; test=param()
+        ///     foo/bar; test="oh:noes"
         ///     
-        /// Which is an invalid MIME type; the correct parameter should be "\"param()\"", which would generate
-        /// 
-        ///     foo/bar; test="param()"
-        ///     
-        /// Similarly, this method will not generate a malformed MIME type if the parameter name contains invalid
-        /// characters, as well as if the type or subtype contains invalid characters.  It is the user's responsibilitly
-        /// to ensure that correctly formatted values are used with this class.
+        /// However, this method will generate a malformed MIME type if the parameter name contains invalid
+        /// characters, as well as if the type or subtype contains invalid characters.  It is the user's
+        /// responsibilitly to ensure that correctly formatted values are used with this class.
         /// </remarks>
         /// <returns></returns>
         public override string ToString()
@@ -623,7 +625,16 @@ namespace Pointy.Util
                 b.Append("; ");
                 b.Append(pair.Key);
                 b.Append('=');
-                b.Append(pair.Value);
+                if (TSpecialsRE.IsMatch(pair.Value))
+                {
+                    b.Append('"');
+                    b.Append(pair.Value);
+                    b.Append('"');
+                }
+                else
+                {
+                    b.Append(pair.Value);
+                }
             }
 
             return b.ToString();

@@ -1,5 +1,4 @@
-﻿Tests      - Add tests for Safari, IE8
-Parsing    - Refactor the interface.  A few areas could be tightened up (somewhat done?).
+﻿Tests      - Add tests for Safari, IE9
 
 
 Done by 1.0:

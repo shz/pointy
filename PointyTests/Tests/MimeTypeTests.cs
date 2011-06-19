@@ -24,6 +24,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 using Pointy.Util;
 using PointyTests.MimeTypeTest;
@@ -32,21 +33,34 @@ namespace PointyTests
 {
     class MimeTypeTests
     {
-        static Test[] MimeTests = new Test[]
+        static Test[] CommonTests = new Test[]
         {
             new Test("Basic", "text", "html", "text/html"),
             new Test("Basic with one parameter", "text", "plain", new Dictionary<string, string>()
-                {
-                    {"charset", "UTF-8"}
-                },
-            "text/plain; charset=UTF-8")
+            {
+                {"charset", "UTF-8"}
+            },
+            "text/plain; charset=UTF-8"),
+            new Test("Parameter with quotes", "foo", "bar", new Dictionary<string, string>()
+            {
+                {"param", "oh:noes"}
+            },
+            "foo/bar; param=\"oh:noes\"")
+        };
+        static Test[] GenerationTests = new Test[]
+        {
+            
+        };
+        static Test[] ParsingTests = new Test[]
+        {
+
         };
 
         public static void Run()
         {
             //parsing
             Tests.PushTest("MimeType Generation");
-            foreach (var test in MimeTests)
+            foreach (var test in CommonTests.Union(GenerationTests))
             {
                 Tests.PushTest(test.Name);
 
@@ -59,7 +73,7 @@ namespace PointyTests
 
             //generation
             Tests.PushTest("MimeType Parsing");
-            foreach (var test in MimeTests)
+            foreach (var test in CommonTests.Union(ParsingTests))
             {
                 Tests.PushTest(test.Name);
 
