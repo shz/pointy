@@ -1,28 +1,22 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pointy", "Pointy\Pointy.csproj", "{D2CF6F95-058A-4CB0-9AAE-D8F95CE03710}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PointyTests", "PointyTests\PointyTests.csproj", "{B76A834B-732C-47D1-833D-CB895CAFC4F7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{7EB64850-6DD0-4D95-950D-B3FB19454385}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hello World", "Examples\Hello World\Hello World.csproj", "{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}"
-	ProjectSection(ProjectDependencies) = postProject
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7} = {B76A834B-732C-47D1-833D-CB895CAFC4F7}
-	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileServer", "Examples\FileServer\FileServer.csproj", "{24575F65-02AA-4B7E-8A2E-1CA85B001894}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Routing", "Examples\Routing\Routing.csproj", "{E750928E-24E7-4C67-8D31-02751DB5E9A2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8272706F-7F21-431E-BC6E-8A379A2FDFBA}"
 	ProjectSection(SolutionItems) = preProject
 		license.txt = license.txt
-		notes.txt = notes.txt
+		notes.md = notes.md
 		readme.md = readme.md
-		todo.txt = todo.txt
-	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileServer", "Examples\FileServer\FileServer.csproj", "{24575F65-02AA-4B7E-8A2E-1CA85B001894}"
-	ProjectSection(ProjectDependencies) = postProject
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7} = {B76A834B-732C-47D1-833D-CB895CAFC4F7}
+		testing.md = testing.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{E661A116-1DCD-440C-B34A-6E8C66CEB4BE}"
@@ -30,7 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 		Documentation\index.html = Documentation\index.html
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MicroBenchmarks", "MicroBenchmarks\MicroBenchmarks.csproj", "{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PointyTests", "PointyTests\PointyTests.csproj", "{7A930093-146B-423D-BF8D-AC4D43E57D93}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,14 +42,6 @@ Global
 		{D2CF6F95-058A-4CB0-9AAE-D8F95CE03710}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D2CF6F95-058A-4CB0-9AAE-D8F95CE03710}.Release|x86.ActiveCfg = Release|x86
 		{D2CF6F95-058A-4CB0-9AAE-D8F95CE03710}.Release|x86.Build.0 = Release|x86
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Debug|x86.ActiveCfg = Debug|x86
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Debug|x86.Build.0 = Debug|x86
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Release|x86.ActiveCfg = Release|x86
-		{B76A834B-732C-47D1-833D-CB895CAFC4F7}.Release|x86.Build.0 = Release|x86
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A}.Debug|x86.ActiveCfg = Debug|x86
@@ -72,14 +58,18 @@ Global
 		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|Any CPU.Build.0 = Release|Any CPU
 		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|x86.ActiveCfg = Release|x86
 		{24575F65-02AA-4B7E-8A2E-1CA85B001894}.Release|x86.Build.0 = Release|x86
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Debug|x86.ActiveCfg = Debug|x86
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Debug|x86.Build.0 = Debug|x86
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Release|x86.ActiveCfg = Release|x86
-		{EEDBFA20-97A7-4E7C-A9BD-B6A7FA352B49}.Release|x86.Build.0 = Release|x86
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2}.Release|x86.ActiveCfg = Release|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A930093-146B-423D-BF8D-AC4D43E57D93}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -87,5 +77,9 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{2016BC44-AFFF-48B4-A7B6-2C8FCADB620A} = {7EB64850-6DD0-4D95-950D-B3FB19454385}
 		{24575F65-02AA-4B7E-8A2E-1CA85B001894} = {7EB64850-6DD0-4D95-950D-B3FB19454385}
+		{E750928E-24E7-4C67-8D31-02751DB5E9A2} = {7EB64850-6DD0-4D95-950D-B3FB19454385}
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = Examples\Hello World\Hello World.csproj
 	EndGlobalSection
 EndGlobal

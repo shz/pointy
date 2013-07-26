@@ -1,41 +1,18 @@
-﻿// HTTP/Response.cs
-// HTTP response class, responsible for writing data back to the client.
-
-// Copyright (c) 2010 Patrick Stein
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
-// TODO - refactor SendFile and SendBody to share code
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Net.Sockets;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Pointy.HTTP
 {
     /// <summary>
     /// Attempted to write data to the response in a manner that doesn't conform to the HTTP standard.
     /// 
-    /// This is likely to result from incorrectly ordering ResponseHandler method calls.
+    /// This is likely to result from incorrectly ordering Response method calls.
     /// </summary>
+    [Serializable]
     public class HttpViolationException : Exception
     {
         public HttpViolationException(string message) : base(message)
@@ -44,66 +21,139 @@ namespace Pointy.HTTP
         }
     }
 
-    /// <summary>
-    /// Class used to write HTTP responses to a client
-    /// </summary>
-    /// <remarks>
-    /// Response takes care of writing HTTP responses to clients.  It provides four methods for doing so:
-    /// <see cref="Start"/> <see cref="SendHeader"/> <see cref="SendBody"/> <see cref="Finish"/>.
-    /// 
-    /// Both Start and Finish must be called in correct order to properly send a response, but sending headers
-    /// and body is optional.
-    /// 
-    /// Every call to one of Response's methods returns a bool, indicating if the call was successful.  If a method
-    /// returns false, it indicates that some exception occurred on the socket that prevented network IO from
-    /// successfully completing.  When this happens the underlying socket is cleanly disconnected, and any further
-    /// method calls will fail silently, returning false as well.  This allows an application to forego
-    /// error handling logic when using the class, though for performance reasons error checking is preferred.  Note
-    /// that the lack of an error does not necessarily indicate that a call was successful.  Since Response uses
-    /// the async Socket API, it may not be notified of a failure until after a method has successfully returned.
-    /// While subsequent method calls will fail properly, in this case the call from which the error originated will
-    /// still return a success indicator.
-    /// 
-    /// Response sends body data as it supplied, using chunked encoding by default.  If a Content-Length
-    /// header is sent, ResponseHandler will automatically use indentity encoding, forgoing the use of chunks.
-    /// If a client connects using HTTP/1.0 and streaming mode is used, the socket will be disconnected
-    /// after the response finished, <i>regardless of the presence of a Keep-Alive header</i>; streaming HTTP/1.0
-    /// responses in any other way is impossible.
-    /// 
-    /// ResponseHandler enforces correct response usage according to the HTTP spec (RFC2616), but only on
-    /// a high level, such as header/body data ordering; header names/values are not checked, and body
-    /// length is not enforced.  Similarly, ResponseHandler will allow trailing headers to be sent when
-    /// using chunked transfer-encoding, but does not check the TE header to make sure that the client
-    /// will actually accept them.
-    /// </remarks>
-    /// <example>
-    /// Response response;
-    /// 
-    /// //response is set to a Response object somehow
-    /// 
-    /// //Basic example (Streaming)
-    /// response.Start();
-    /// response.SendHeader("Content-Type", "text/plain; charset=utf-8");
-    /// response.SendBody("Hello World"); //uses UTF8 encoding by default
-    /// response.FinishResponse();
-    /// 
-    /// //More advanced usage (Streaming)
-    /// response.Start(200, "OK");
-    /// response.SendHeader("Content-Type", "text/plain");
-    /// response.SendBody("Hello World", Encoding.ASCIIEncoding); //sends with ASCII encoding
-    /// response.Finish();
-    /// 
-    /// //Basic error handling - breaks early from the request handling process, saving
-    /// //processing resources
-    /// if (!response.Start())
-    ///     return;
-    /// if (!response.SendBody("Hello world"))
-    ///     return;
-    /// if (!response.Finish())
-    ///     return;
-    /// </example>
     public class Response
     {
+        /// <summary>
+        /// HTTP-style header dictionary.  Uses a list of Tuples internally, allowing
+        /// for duplicates.  Reading from it is relatively slow, writing to it is
+        /// relatively fast.
+        /// </summary>
+        class ResponseHeaders : IDictionary<string, string>
+        {
+            Response Res;
+            List<Tuple<string, string>> Headers = new List<Tuple<string, string>>();
+
+            public ResponseHeaders(Response res)
+            {
+                Res = res;
+            }
+
+            /// <summary>
+            /// Writes all headers to a stream asynchronously.  Does not
+            /// write final trailing CRLF.
+            /// </summary>
+            /// <param name="stream">Stream to write to</param>
+            /// <returns></returns>
+            public async Task Write(Stream stream)
+            {
+                foreach (var tuple in Headers)
+                {
+                    var bytes = Encoding.ASCII.GetBytes(String.Join("", tuple.Item1, ": ", tuple.Item2, "\r\n"));
+                    await stream.WriteAsync(bytes, 0, bytes.Length);
+                }
+            }
+
+            #region IDictionary
+
+            public void Add(string key, string value)
+            {
+                Headers.Add(new Tuple<string, string>(key, value));
+            }
+            public void Add(KeyValuePair<string, string> item)
+            {
+                Add(item.Key, item.Value);
+            }
+            public bool Remove(KeyValuePair<string, string> item)
+            {
+                return Headers.Remove(new Tuple<string, string>(item.Key, item.Value));
+            }
+            public bool Remove(string key)
+            {
+                return Headers.RemoveAll((tuple) => tuple.Item1 == key) > 0;
+            }
+            public bool ContainsKey(string key)
+            {
+                foreach (var tuple in Headers)
+                    if (tuple.Item1 == key)
+                        return true;
+                return false;
+            }
+            public bool TryGetValue(string key, out string value)
+            {
+                value = null;
+                foreach (var tuple in Headers)
+                {
+                    if (tuple.Item1 == key)
+                    {
+                        if (value != null) value += "\n" + tuple.Item2;
+                        else value = tuple.Item2;
+                    }
+                }
+                return value != null;
+            }
+            public bool Contains(KeyValuePair<string, string> item)
+            {
+                return Headers.Contains(new Tuple<string, string>(item.Key, item.Value));
+            }
+            public void Clear()
+            {
+                Headers.Clear();
+            }
+            public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+            {
+                foreach (var tuple in Headers)
+                    yield return new KeyValuePair<string, string>(tuple.Item1, tuple.Item2);
+            }
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+            public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
+            {
+                throw new NotImplementedException();
+            }
+
+            public ICollection<string> Keys
+            {
+                get
+                {
+                    SortedSet<string> keys = new SortedSet<string>();
+                    foreach (var tuple in Headers)
+                        keys.Add(tuple.Item1);
+
+                    return keys;
+                }
+            }
+            public ICollection<string> Values
+            {
+                get { throw new NotImplementedException(); }
+            }
+            public int Count
+            {
+                get { return Values.Count; }
+            }
+            public bool IsReadOnly
+            {
+                get { return false; }
+            }
+            public string this[string key]
+            {
+                get
+                {
+                    string val;
+                    if (!TryGetValue(key, out val))
+                        throw new KeyNotFoundException();
+                    return val;
+                }
+                set
+                {
+                    Add(key, value);
+                }
+            }
+
+            #endregion
+        }
+
         /// <summary>
         /// Current state of the response
         /// </summary>
@@ -114,6 +164,8 @@ namespace Pointy.HTTP
             Trailers,
             Body,
             Done,
+            Error,
+            Cancelled
         }
 
         /// <summary>
@@ -124,81 +176,70 @@ namespace Pointy.HTTP
             0xD, 0xA
         };
 
-        volatile bool SockError = false;
         ResponseState State = ResponseState.ResponseLine;
-        Socket ClientSocket;
-        HTTP.Versions Version;
-        bool Disconnect;
+        Core.Client Client;
+        Action<bool> DoneCallback;
+        HTTP.Version Version;
         int ContentLength = -1;
+        bool ForceDisconnect = false;
+        ResponseHeaders _Headers;
 
-        bool TransferEncodingHeaderSent = false;
-        bool ConnectionHeaderSent       = false;
-
-        FreeSocketCallback FreeSocket;
-
-        public Response(Socket socket, bool disconnect, HTTP.Versions version, FreeSocketCallback freeSocket)
+        internal Response(HTTP.Version version, Core.Client client, bool keepAlive, Action<bool> doneCallback)
         {
-            ClientSocket = socket;
-            Disconnect = disconnect;
+            Client = client;
+            DoneCallback = doneCallback;
             Version = version;
-            FreeSocket = freeSocket;
-        }
-
-        /// <summary>
-        /// Frees the socket, sets the state to Error, and returns false
-        /// </summary>
-        /// <returns></returns>
-        bool Error()
-        {
-            SockError = true;
-            FreeSocket(ClientSocket);
-            return false;
+            _Headers = new ResponseHeaders(this);
+            if (keepAlive)
+                _Headers["Connection"] = "keep-alive";
         }
 
         /// <summary>
         /// DRY; Wraps common Socket.Send functionality
         /// </summary>
         /// <returns></returns>
-        void Send(string data)
+        Task Send(string data)
         {
-            //The encoder call may or may not throw an EncoderFallbackException.
-            //I don't really care. If someone's giving us non-ASCII data, they deserve it.
-            Send(Encoding.ASCII.GetBytes(data));
+            // The encoder call may or may not throw an EncoderFallbackException.
+            // I don't really care. If someone's giving us non-ASCII data, they deserve it.
+            return Send(Encoding.ASCII.GetBytes(data));
         }
         /// <summary>
         /// DRY; Wraps common Socket.Send functionality
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        void Send(byte[] data)
+        Task Send(byte[] data)
         {
-            Send(new ArraySegment<byte>(data));
+            return Send(new ArraySegment<byte>(data));
         }
         /// <summary>
         /// DRY; Wraps common Socket.Send functionality
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        void Send(ArraySegment<byte> data)
+        Task Send(ArraySegment<byte> data)
         {
-            ClientSocket.BeginSend(new ArraySegment<byte>[] {data}, SocketFlags.None, delegate(IAsyncResult result)
+            if (State == ResponseState.Error)
+                throw new InvalidOperationException("Response encountered an error and cannot continue");
+            else if (State == ResponseState.Cancelled)
+                throw new InvalidOperationException("Client disconnected");
+
+            // If the socket dies due to a client disconnect mid-response, this
+            // will raise a nasty exception.  We don't want to handle this; it's
+            // up to the user.
+            return Client.Stream.WriteAsync(data.Array, data.Offset, data.Count).ContinueWith(delegate(Task t)
             {
-                //Don't write if we're in an error state
-                if (SockError)
-                    return;
-
-                SocketError error;
-                ClientSocket.EndSend(result, out error);
-
-                if (error != SocketError.Success)
-                    Error();
-            }, null);
+                // If something went wrong, bail out
+                if (t.IsFaulted || t.IsCanceled)
+                    Abort();
+            });
         }
 
         /// <summary>
         /// Begins sending an HTTP 200 OK response to the client.
         /// </summary>
-        public bool Start()
+        public Task Start()
         {
             return Start(200);
         }
@@ -207,15 +248,15 @@ namespace Pointy.HTTP
         /// reason phrase for that code.
         /// </summary>
         /// <param name="code"></param>
-        public bool Start(int code)
+        public Task Start(int code)
         {
-            //This here switch statement calls StartResponse(int, string)
-            //with the code and the default reason phrase.  All codes from
-            //RFC2616 are implemented.
+            // This here switch statement calls StartResponse(int, string)
+            // with the code and the default reason phrase.  All codes from
+            // RFC2616 are implemented.
             //
-            //These phrases are matched to their codes directly in the
-            //switch.  Refactor the matching into its own method if this
-            //list is needed elsewhere.
+            // These phrases are matched to their codes directly in the
+            // switch.  Refactor the matching into its own method if this
+            // list is needed elsewhere.
             switch (code)
             {
                 #region 100s
@@ -320,8 +361,8 @@ namespace Pointy.HTTP
                 #endregion
 
                 default:
-                    return Start(code, "Hi Mom"); //If someone's using a crazy code without
-                                                          //supplying a reason phrase, they deserve it.
+                    return Start(code, "Hi Mom"); // If someone's using a crazy code without
+                                                  // supplying a reason phrase, they deserve it.
             }
         }
         /// <summary>
@@ -329,88 +370,130 @@ namespace Pointy.HTTP
         /// </summary>
         /// <param name="code">HTTP status code (See RFC2616 6.1.1)</param>
         /// <param name="reasonPhrase">Reason phrase</param>
-        public bool Start(int code, string reasonPhrase)
+        public Task Start(int code, string reasonPhrase)
         {
-            //Make sure we're in the right response state
-            if (SockError)
-                return false;
-            else if (State != ResponseState.ResponseLine)
+            // Do some sanity checking on state
+            if (State != ResponseState.ResponseLine)
+            {
                 if (State == ResponseState.Done)
                     throw new HttpViolationException("Response has already been sent to the client");
                 else
                     throw new HttpViolationException("Response has already been started");
+            }
 
-            //Send the Status-Line (RFC2616 6.1)
-            Send(string.Concat("HTTP/", Version == HTTP.Versions.HTTP1_0 ? "1.0 " : "1.1 ", code, " ", reasonPhrase, "\r\n"));
-
-            //We're writing headers next
+            // We're writing headers next
             State = ResponseState.Headers;
 
-            //Let the caller know that nothing went wrong (well, probably nothing went wrong...)
-            return true;
+            // Send the Status-Line (RFC2616 6.1)
+            return Send(string.Concat("HTTP/", Version == HTTP.Version.HTTP1_0 ? "1.0 " : "1.1 ", code, " ", reasonPhrase, "\r\n"));
         }
 
         /// <summary>
-        /// Sends an HTTP header to the client.  If streaming mode via HTTP/1.1 is being used (default
-        /// unless the Content-Length header has been sent) and part of the body has already been sent,
-        /// the header will be sent as a trailer and sending of further body data will be illegal.
+        /// Sets and gets response headers
         /// </summary>
-        /// <param name="header">Header name</param>
-        /// <param name="value">Header value</param>
-        /// <returns></returns>
-        public bool SendHeader(string header, string value)
+        public IDictionary<string, string> Headers
         {
-            //Make sure we're in the right response state
-            if (SockError)
-                return false;
-            else if (State == ResponseState.Done)
-                throw new HttpViolationException("Response has already been sent to the client");
-            else if (State == ResponseState.ResponseLine)
-                throw new HttpViolationException("Response has not been started yet");
+            get { return _Headers; }
+        }
+        /// <summary>
+        /// Writes the header dictionary to the response
+        /// </summary>
+        /// <returns></returns>
+        private async Task WriteHeaders()
+        {
+            // Add a server header if none was specified
+            string temp;
+            if (!Headers.TryGetValue("Server", out temp))
+                Headers["Server"] = "Pointy/3.1415";
+            if (!Headers.TryGetValue("Date", out temp))
+                Headers["Date"] = DateTime.UtcNow.ToString("R");
 
-            //Handle trailers
-            if (State == ResponseState.Body)
+            // Send the headers
+            try
             {
-                if (ContentLength < 0 && Version == Versions.HTTP1_1)
-                {
-                    //Send the "final" chunk
-                    Send("0\r\n");
+                await _Headers.Write(Client.Stream);
+            }
+            catch (Exception err)
+            {
+                Abort();
+                return;
+            }
 
-                    //Prevent any more body chunks from being sent
-                    State = ResponseState.Trailers;
+            // Signal end of headers with CRLF
+            await Send(CRLF);
+        }
+
+        /// <summary>
+        /// Handles Content-Length, writing headers, etc
+        /// </summary>
+        /// <returns></returns>
+        private async Task StartBody()
+        {
+            // This gets used in a couple places for reading headers
+            string temp;
+
+            // Parse out content length
+            if (Headers.TryGetValue("Content-Length", out temp))
+            {
+                if (!Int32.TryParse(temp, out ContentLength))
+                {
+                    throw new HttpViolationException("Invalid Content-Length header");
                 }
+            }
+            else
+            {
+                ContentLength = -1;
+            }
+
+
+            // If there's no content length then we should use chunked mode.  We
+            // have some bookkeeping to do.
+            if (ContentLength < 0)
+            {
+                // For HTTP/1.1, we need to ensure Transfer-Encoding is
+                // set to chunked.  If the user hasn't already set that
+                // header, do it for them.  A nice bonus is that by RFC2616,
+                // if Transfer-Encoding is sent it must include chunked, and
+                // chunked must be the last encoding applied.  This means
+                // that unless the user is breaking the spec, our chunk
+                // handling WILL work.
+                // FIXME - Not entirely true, as we can use transfer-encoding
+                //         without chunks by killing the connection.  We
+                //         should support this in the future.
+                if (Version == HTTP.Version.HTTP1_1)
+                {
+                    if (!Headers.TryGetValue("Transfer-Encoding", out temp))
+                        Headers["Transfer-Encoding"] = "chunked";
+
+                    // TODO - Verify the user-defined Transfer-Encoding
+                }
+                // Unfortunately, HTTP/1.0 doesn't support transfer encoding.
+                // We can work around this by ensuring that we close the
+                // connection when we're done sending the body, in which case
+                // the Content-Length header isn't required and we can send
+                // whatever we want to.
                 else
                 {
-                    throw new HttpViolationException("Trailers only allowed with streaming mode via HTTP/1.1 requests");
+                    ForceDisconnect = true;
+                    // Must remove the header to ensure we don't mess with clients
+                    _Headers.Remove("Connection");
                 }
             }
 
-            //If the header is Content-Length, then we need to obey that
-            if (header.Equals("Content-Length"))
-                ContentLength = int.Parse(value); //This could throw an exception, but we want that to happen
+            // Write the headers
+            await WriteHeaders();
 
-            //If the user sends Transfer-Encoding, this affects our streaming
-            if (header.Equals("Transfer-Encoding"))
-                TransferEncodingHeaderSent = true;
-
-            //We track this for HTTP/1.0 keep alive
-            if (header.Equals("Connection"))
-                ConnectionHeaderSent = true;
-
-            //Send the header line (Concat appears to be the fastest choice here)
-            Send(string.Concat(header, ": ", value, "\r\n"));
-
-            return true;
+            // Update the state
+            State = ResponseState.Body;
         }
-
         /// <summary>
         /// Sends a string to the client, using UTF-8 encoding
         /// </summary>
         /// <param name="data">String to send</param>
         /// <returns></returns>
-        public bool SendBody(string data)
+        public Task Write(string data)
         {
-            return SendBody(Encoding.UTF8.GetBytes(data));
+            return Write(data, Encoding.UTF8);
         }
         /// <summary>
         /// Sends a string to the client, using the specified encoding
@@ -418,127 +501,137 @@ namespace Pointy.HTTP
         /// <param name="data">String to send</param>
         /// <param name="encoding">Encoding to use</param>
         /// <returns></returns>
-        public bool SendBody(string data, Encoding encoding)
+        public Task Write(string data, Encoding encoding)
         {
-            return SendBody(encoding.GetBytes(data));
+            return Write(encoding.GetBytes(data));
         }
         /// <summary>
         /// Sends raw data to the client.
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool SendBody(byte[] data)
+        public Task Write(byte[] data)
         {
-            return SendBody(new ArraySegment<byte>(data));
+            return Write(new ArraySegment<byte>(data));
         }
         /// <summary>
         /// Sends raw data to the client.
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public bool SendBody(ArraySegment<byte> data)
+        public async Task Write(ArraySegment<byte> data)
         {
-            //Make sure we're in the right response state
-            if (SockError)
-                return false;
-            else if (State == ResponseState.Done)
+            // Make sure we're in the right response state
+            if (State == ResponseState.Done)
                 throw new HttpViolationException("Response has already been sent to the client");
             else if (State == ResponseState.ResponseLine)
                 throw new HttpViolationException("Response has not been started yet");
             else if (State == ResponseState.Trailers)
                 throw new HttpViolationException("Can't send more body data after trailers");
 
-            //If we have no Content-Length...
-            if (ContentLength < 0)
-            {
-                //... and we're using HTTP/1.1, we default to chunked transfer-encoding.
-                //If the user hasn't already sent the header, do it for them.  A nice bonus
-                //here is that by RFC2616, if Transfer-Encoding is sent it must include
-                //chunked, and chunked must be the last encoding applied.  This means that
-                //unless the user is breaking the spec, our chunked handling WILL work...
-                if (Version == HTTP.Versions.HTTP1_1 && !TransferEncodingHeaderSent)
-                {
-                    if (!SendHeader("Transfer-Encoding", "chunked"))
-                        return false;
-                }
-                //Streaming with HTTP requires some work
-                else if (Version == Versions.HTTP1_0)
-                {
-                    //Can't support keep alive while streaming
-                    Disconnect = true;
-                }
-            }
-            //If we're using HTTP/1.0 keep-alive, we need to add it as a header
-            else if (Version == Versions.HTTP1_0 && Disconnect == false)
-            {
-                //If the user sets the Connection header, we assume no keep-alive
-                //FIXME: If the user sends Connection: Keep-Alive, don't disconnect
-                if (ConnectionHeaderSent)
-                    Disconnect = true;
-                else
-                    if (!SendHeader("Connection", "Keep-Alive"))
-                        return false;
-            }
-
-            //If we're just writing the first body piece, write a CRLF to
-            //signal the end of the headers (RFC2616 6)
+            // If we're in the header state, transition to the body phase
             if (State == ResponseState.Headers)
-                Send(CRLF);
+                await StartBody();
 
-            //If we're in chunked mode, send the chunk length
-            if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
-                Send(string.Format("{0:x}\r\n", data.Count));
+            // If we're in chunked mode, send the chunk length
+            if (ContentLength < 0 && Version == HTTP.Version.HTTP1_1)
+                await Send(string.Format("{0:x}\r\n", data.Count));
 
-            //Write ze data
-            Send(data);
+            // Write ze data
+            await Send(data);
 
-            //If we're in chunked mode, send another CRLF to polish off the chunk
-            if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
-                Send(CRLF);
+            // If we're in chunked mode, send another CRLF to polish off the chunk
+            if (ContentLength < 0 && Version == HTTP.Version.HTTP1_1)
+                await Send(CRLF);
+        }
+        /// <summary>
+        /// Writes a file to the response.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        public async Task WriteFile(FileInfo file)
+        {
+            // Make sure we're in the right response state
+            if (State == ResponseState.Done)
+                throw new HttpViolationException("Response has already been sent to the client");
+            else if (State == ResponseState.ResponseLine)
+                throw new HttpViolationException("Response has not been started yet");
+            else if (State == ResponseState.Trailers)
+                throw new HttpViolationException("Can't send more body data after trailers");
 
-            //Make sure state is set correctly
-            State = ResponseState.Body;
+            // If we're in the header state, transition to the body phase
+            if (State == ResponseState.Headers)
+                await StartBody();
 
-            //And give the caller the all-clear
-            return true;
+            // If we're in chunked mode, send the chunk length
+            if (ContentLength < 0 && Version == HTTP.Version.HTTP1_1)
+                await Send(string.Format("{0:x}\r\n", file.Length));
+
+            // And now the logic gets funky.  If the underlying stream is an SSL
+            // stream then we have to do the file reading manually.  However, if
+            // it's a plain-jane Socket, we can use the uber-fast WriteFile method
+            // to do our work for us.
+            if (Client.UnderlyingSocket != null)
+            {
+                await Task.Factory.FromAsync(Client.UnderlyingSocket.BeginSendFile,
+                    Client.UnderlyingSocket.EndSendFile,
+                    file.FullName,
+                    null);
+            }
+            else
+            {
+                throw new NotImplementedException("Soon.");
+            }
+
+            // If we're in chunked mode, send another CRLF to polish off the chunk
+            if (ContentLength < 0 && Version == HTTP.Version.HTTP1_1)
+                await Send(CRLF);
         }
         
         /// <summary>
         /// Finishes sending the response to the client.
         /// </summary>
         /// <returns></returns>
-        public bool Finish()
+        public async Task Finish()
         {
-            //Make sure we're in the right response state
-            if (SockError)
-                return false;
-            else if (State == ResponseState.ResponseLine)
+            // Make sure we're in the right response state
+            if (State == ResponseState.ResponseLine)
                 throw new Exception("Response has not been started yet");
             else if (State == ResponseState.Done)
                 throw new Exception("Response has already been sent to the client");
 
-            //If we haven't sent a body, signal the end of the headers
-            //by sending a CRLF (RFC2616 6)
+            // If we're still in headers, it means no body was sent.  We
+            // need to send the headers before we wrap the request up. We
+            // also need to force Content-Length to 0.
             if (State == ResponseState.Headers)
-                Send(CRLF);
+            {
+                Headers["Content-Length"] = "0";
+                await WriteHeaders();
+            }
+            // Otherwise, we need to wrap up sending the body
+            else if (State == ResponseState.Body)
+            {
+                // If we're using chunked encoding and haven't sent any
+                // trailers, we need to send that final chunk before
+                // signalling the end of the request.
+                if (ContentLength < 0 && Version == HTTP.Version.HTTP1_1)
+                    await Send("0\r\n");
 
-            //If we're using chunked encoding and haven't sent any
-            //trailers, we still need to send the last chunk
-            if (ContentLength < 0 && State == ResponseState.Body)
-                Send("0\r\n");
+                // All the cases converge to requiring one more CRLF
+                await Send(CRLF);
+            }
 
-            //All the cases converge to requiring one more CRLF
-            Send(CRLF);
-
-            //Disconnect the socket if we're instructed to
-            if (Disconnect)
-                FreeSocket(ClientSocket);
-
-            //Update the state to prevent any more writing on this ResponseHandler
+            // Update the state to prevent any more writing on this Response
             State = ResponseState.Done;
 
-            //Tell the caller that we're good to go
-            return true;
+            // If the Connection header was specified with a value other than
+            // Keep-Alive, we should close the connection.
+            string s;
+            if (_Headers.TryGetValue("Connection", out s) && s.ToLower() != "keep-alive")
+                ForceDisconnect = true;
+
+            // Trigger the completion callback
+            DoneCallback(ForceDisconnect);
         }
 
         /// <summary>
@@ -551,88 +644,13 @@ namespace Pointy.HTTP
         /// </summary>
         public void Abort()
         {
-            Error();
-        }
+            // If we're either cancelled or errored, there's no need to do anything
+            if (State == ResponseState.Error || State == ResponseState.Cancelled)
+                return;
 
-        public bool SendFile(string path)
-        {
-            //Make sure we have the correct response state
-            if (SockError)
-                return false;
-            else if (State == ResponseState.Done)
-                throw new HttpViolationException("Response has already been sent to the client");
-            else if (State == ResponseState.ResponseLine)
-                throw new HttpViolationException("Response has not been started yet");
-            else if (State == ResponseState.Trailers)
-                throw new HttpViolationException("Can't send more body data after trailers");
-
-            //If we have no Content-Length...
-            if (ContentLength < 0)
-            {
-                //... and we're using HTTP/1.1, we default to chunked transfer-encoding.
-                //If the user hasn't already sent the header, do it for them.  A nice bonus
-                //here is that by RFC2616, if Transfer-Encoding is sent it must include
-                //chunked, and chunked must be the last encoding applied.  This means that
-                //unless the user is breaking the spec, our chunked handling WILL work...
-                if (Version == HTTP.Versions.HTTP1_1 && !TransferEncodingHeaderSent)
-                {
-                    if (!SendHeader("Transfer-Encoding", "chunked"))
-                        return false;
-                }
-                //Streaming with HTTP requires some work
-                else if (Version == Versions.HTTP1_0)
-                {
-                    //Can't support keep alive while streaming
-                    Disconnect = true;
-                }
-            }
-            //If we're using HTTP/1.0 keep-alive, we need to add it as a header
-            else if (Version == Versions.HTTP1_0 && Disconnect == false)
-            {
-                //If the user sets the Connection header, we assume no keep-alive
-                //FIXME: If the user sends Connection: Keep-Alive, don't disconnect
-                if (ConnectionHeaderSent)
-                    Disconnect = true;
-                else
-                    if (!SendHeader("Connection", "Keep-Alive"))
-                        return false;
-            }
-
-            //If we're just writing the first body piece, write a CRLF to
-            //signal the end of the headers (RFC2616 6)
-            if (State == ResponseState.Headers)
-                Send(CRLF);
-
-            //If we're in chunked mode, send the chunk length
-            //TODO
-            //if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
-            //    Send(string.Format("{0:x}\r\n", data.Count));
-
-            try
-            {
-                ClientSocket.BeginSendFile(path, delegate(IAsyncResult result)
-                {
-                    try
-                    {
-                        ClientSocket.EndSendFile(result);
-                    }
-                    catch
-                    {
-                        Error();
-                    }
-                }, null);
-
-                //If we're in chunked mode, send another CRLF to polish off the chunk
-                if (ContentLength < 0 && Version == HTTP.Versions.HTTP1_1)
-                    Send(CRLF);
-
-                State = ResponseState.Body;
-                return true;
-            }
-            catch
-            {
-                return Error();
-            }
+            // Kill the connection and wrap up here
+            State = ResponseState.Error;
+            DoneCallback(true);
         }
     }
 }

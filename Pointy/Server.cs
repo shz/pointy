@@ -1,57 +1,56 @@
-﻿// Server.cs
-// Main Pointy server logic
-
-// Copyright (c) 2010 Patrick Stein
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Net.Security;
 using System.Text;
 using System.IO;
-
-using Pointy.HTTP;
-using Pointy.Util;
+using System.Threading;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 
 namespace Pointy
 {
-    public delegate void RequestCallback(Request reqeust, Response handler);
-    public delegate void FreeSocketCallback(Socket socket);
-
     /// <summary>
     /// The Pointy HTTP Server.
     /// </summary>
-    /// <typeparam name="P">Parser to use</typeparam>
-    public sealed class Server<P> : IDisposable where P : IParser, new()
+    public sealed class Server : IDisposable
     {
-        Socket Sock;
-        volatile bool Running;
-        IUrlDispatcher Dispatcher;
+        Socket[] Socks;
+        int Disposed = 0; // Bool won't work with CompareExchange
+        X509Certificate Certificate;
+        Core.Scheduler Scheduler;
+        volatile IRouter _Router;
+        Action<Exception> _ErrorHandler = null;
 
-        IList<Socket> ActiveSockets;
+        Util.SingleLinkedList<Core.Client> ActiveClients = new Util.SingleLinkedList<Core.Client>();
+        int AddedClients = 0;
 
-        public Server(IUrlDispatcher dispatcher)
+        /// <summary>
+        /// Gets or sets the root router used to dispatch requests
+        /// </summary>
+        public IRouter Router
         {
-            Dispatcher = dispatcher;
-            ActiveSockets = new List<Socket>();
+            get { return _Router; }
+            set { _Router = value; }
+        }
+
+        public Server()
+            : this(0)
+        {
+
+        }
+        public Server(int threads) : this(null, threads)
+        {
+        }
+        public Server(IRouter router, int? threads = null, X509Certificate certificate = null)
+        {
+            Certificate = certificate;
+            Router = router;
+
+            // Prep the scheduler
+            Scheduler = new Core.Scheduler(threads ?? 1);
         }
         ~Server()
         {
@@ -59,237 +58,203 @@ namespace Pointy
         }
         public void Dispose()
         {
-            //This is probably a bad implementation, but the problem lies in Stop.
-            //TODO - In make sure Stop won't throw an exception, and then all is well
-            if (Running)
+            // Only dispose if it hasn't already happened
+            if (0 == Interlocked.CompareExchange(ref Disposed, 1, 0))
             {
-                Running = false;
+                // Clean up the scheduler
+                Scheduler.Stop();
 
-                //Close any open sockets
-                while (ActiveSockets.Count > 0)
+                // Close any open sockets
+                foreach (var r in ActiveClients)
+                    r.Dispose();
+                ActiveClients.Clear();
+
+                // Destroy the listening socket
+                for (var i = 0; i < this.Socks.Length; i++)
                 {
-                    Socket socket = ActiveSockets[0];
-                    FreeSocket(socket);
-                    socket.Close();
+                    try
+                    {
+                        Socks[i].Close();
+                    }
+                    catch (Exception err)
+                    {
+                        // Should probably log this...
+                    }
                 }
-                ActiveSockets.Clear();
 
-                Sock.Close();
+                // No need to call the destructor again
+                GC.SuppressFinalize(this);
             }
-            GC.SuppressFinalize(this);
-        }
-        
-        /// <summary>
-        /// Starts the Pointy server, using the default port (80 for standard HTTP, 443 if using SSL)
-        /// </summary>
-        public void Start()
-        {
-            Start(80);
-        }
-        /// <summary>
-        /// Starts the Pointy server on the specified port.
-        /// </summary>
-        public void Start(int port)
-        {
-            //Handle the running state
-            if (!Running)
-                Running = true;
-            else
-                throw new Exception("Server is already running");
+        }  
 
-            //Set up the main socket
-            System.Net.IPEndPoint endpoint = new System.Net.IPEndPoint(System.Net.IPAddress.Any, port);
-            Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
-            Sock.Bind(endpoint);
-
-            //Start accepting connections
-            Sock.Listen(100);   
-            Sock.BeginAccept(new AsyncCallback(AcceptCallback), MakeParser());
-        }
-        /// <summary>
-        /// Stops the Pointy server, closing all active connections
-        /// and freeing all resources
-        /// </summary>
-        public void Stop()
-        {
-            Dispose();
-        }
+        #region Internals
 
         /// <summary>
-        /// Safely closes a socket
+        /// Handles a new client
         /// </summary>
-        /// <param name="socket">Socket to close</param>
-        internal void FreeSocket(Socket socket)
+        /// <param name="stream"></param>
+        void AddClient(Socket socket, Stream stream)
         {
-            socket.BeginDisconnect(false, delegate(IAsyncResult result)
+            // Prep this connection's client
+            var protocol = (Certificate == null) ? HTTP.Protocol.HTTP : HTTP.Protocol.HTTPS;
+            Core.Client client = null; // Avoids error with client
+            client = new Core.Client(socket, stream, protocol, Router, Scheduler.Queue);
+
+            // Add to the active client list so that the client will be killed
+            // when the server is shut down.
+            lock (ActiveClients)
+                ActiveClients.Add(client);
+
+            // Tell the client to start parsing on the socket
+            client.Start();
+
+            // Dead clients will quickly lose all strong references to them, as network operations
+            // complete.  Over time, dead weak references will accumulate, crowding the list.
+            //
+            // To avoid holding on to a bunch of weak references for eternity, we purge dead
+            // references from the list in batches once we've added enough client to cross
+            // the watermark.
+            if (Interlocked.Increment(ref AddedClients) % 1000 == 0)
             {
-                socket.EndDisconnect(result);
-            }, null);
-        }
-        /// <summary>
-        /// Closes the socket, removing all internal references
-        /// </summary>
-        /// <param name="socket"></param>
-        internal void RemoveSocket(Socket socket)
-        {
-            socket.Close();
-            lock (ActiveSockets)
-                ActiveSockets.Remove(socket);
-        }
-
-        /// <summary>
-        /// Creates an IParser for use with a client connection
-        /// </summary>
-        /// <returns></returns>
-        IParser MakeParser()
-        {
-            IParser parser = new P();
-            parser.MaximumEntitySize = 1024 * 1024 * 10; //10MB default
-            return parser;
-        }
-        /// <summary>
-        /// Adds bytes to a parser and handles any results returned from the parser
-        /// </summary>
-        /// <param name="socket"></param>
-        /// <param name="parser"></param>
-        /// <param name="buffer"></param>
-        void HandleBytes(Socket socket, IParser parser, ArraySegment<byte> buffer)
-        {
-            ParseResult result = parser.AddBytes(buffer);
-
-            if (result != null)
-            {
-                if (result.Response != null)
+                Console.WriteLine("Clearing clients");
+                // Remove those elements
+                if (Monitor.TryEnter(ActiveClients))
                 {
-                    //TODO - write the "info" to the response body
-                    socket.Send(Encoding.ASCII.GetBytes(string.Format("HTTP/1.1 {0} {1}\r\n\r\n", result.Response.Code, result.Response.Name)));
-                    if (result.Close)
-                        FreeSocket(socket);
-                }
-                else if (result.Request != null)
-                {
-                    PointyUri uri = result.Request.Uri;
-                    RequestCallback callback = Dispatcher.Resolve(ref uri);
-
-                    //update the path, making it relative to the path used to
-                    //assign the callback in the dispatcher
-                    result.Request.Uri = uri;
-
-                    //execute the callback
-                    callback(result.Request, new Response(socket, result.Close, result.Request.Version, this.FreeSocket));
+                    int removed = 0;
+                    try
+                    {
+                        Util.SingleLinkedListNode<Core.Client> last = null;
+                        for (var node = ActiveClients.First; node != null; node = node.Next)
+                        {
+                            // If the reference is dead, remove the node
+                            if (!node.Value.IsDisposed)
+                            {
+                                removed++;
+                                if (last != null)
+                                    last.Next = node.Next;
+                                else
+                                    ActiveClients.First = node.Next;
+                            }
+                            last = node;
+                        }
+                    }
+                    finally
+                    {
+                        Console.WriteLine("Reaped {0} dead clients", removed);
+                        Monitor.Exit(ActiveClients);
+                    }
                 }
             }
+
+            return;
         }
+
+        #endregion
 
         #region Socket Callbacks
 
         // These are just a bit too big to use as inline delegates
-        void AcceptCallback(IAsyncResult result)
+        void AcceptCallback(object sender, SocketAsyncEventArgs args)
         {
-            IParser parser = result.AsyncState as IParser;
-            Socket clientSocket;
-            try
+            // If there was an error, just bail out now and save ourselves the trouble
+            if (args.SocketError != SocketError.Success) return;
+
+            // Disable Nagle algorithm, which works around an issue where
+            // we get up to a 200ms delay in some cases (delayed ACK).
+            //args.AcceptSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
+
+            // Create the client
+            NetworkStream client = new NetworkStream(args.AcceptSocket, true);
+
+            // Non SSL servers can start handling data right away
+            if (Certificate == null)
             {
-                clientSocket = Sock.EndAccept(result);
+                // Do the bootstrap
+                AddClient(args.AcceptSocket, client);
             }
-            catch (ObjectDisposedException)
-            {
-                //Nothing to do
-                return;
-            }
-
-            //Add the socket to the active socket list
-            lock (ActiveSockets)
-                ActiveSockets.Add(clientSocket);
-
-            //Prepare the state tuple for the connection
-            ConnectionTuple state = new ConnectionTuple(clientSocket, parser, new ArraySegment<byte>(new byte[1024 * 8]));
-            
-            //Start listening for data on the new socket
-            SocketError error = SocketError.Success;
-            if (Running)
-                clientSocket.BeginReceive(state.Buffer.Array, state.Buffer.Offset, state.Buffer.Count, SocketFlags.None, out error, ReceiveCallback, state);
-            
-            //Handle errors
-            if (error != SocketError.Success)
-                FreeSocket(clientSocket);
-            
-            //Accept another connection
-            if (Running)
-                    Sock.BeginAccept(AcceptCallback, MakeParser());
-            
-        }
-        void ReceiveCallback(IAsyncResult result)
-        {
-            ConnectionTuple state = result.AsyncState as ConnectionTuple;
-
-            int bytes = 0;
-            SocketError error;
-            bytes = state.Socket.EndReceive(result, out error);
-
-            //If there's an error, free the socket
-            if (error != SocketError.Success)
-            {
-                FreeSocket(state.Socket);
-            }
-
-            //Check for disconnections
-            if (bytes == 0)
-            {
-                RemoveSocket(state.Socket);
-            }
-            //handle any data we've been sent, and continue receiving
+            // SSL servers need to authenticate first
             else
             {
-                //Send bytes to the parser
-                ArraySegment<byte> newSegment = new ArraySegment<byte>(state.Buffer.Array, state.Buffer.Offset, bytes);
-                HandleBytes(state.Socket, state.Parser, newSegment);
+                SslStream sslClient = new SslStream(client, false);
+                sslClient.BeginAuthenticateAsServer(Certificate,
+                    false,
+                    System.Security.Authentication.SslProtocols.Tls,
+                    false,
+                    SSLAuthCallback,
+                    sslClient);
+            }
 
-                //The HandleBytes method could potentially have closed our socket
-                if (state.Socket.Connected)
-                {
+            // Listen for another connection
+            args.AcceptSocket = null;
+            var sock = args.UserToken as Socket;
+            if (Disposed == 0)
+                if (!sock.AcceptAsync(args))
+                    AcceptCallback(sock, args);
+            
+        }
+        void SSLAuthCallback(IAsyncResult ar)
+        {
+            SslStream client = (SslStream)ar.AsyncState;
 
-                    //Update the buffer
-                    if (state.Buffer.Count > bytes)
-                        state.Buffer = new ArraySegment<byte>(state.Buffer.Array, state.Buffer.Offset + bytes, state.Buffer.Count - bytes);
-                    else
-                        state.Buffer = new ArraySegment<byte>(new byte[1024 * 4], 0, 1024 * 4);
+            // Wrap up the authentication
+            client.EndAuthenticateAsServer(ar);
 
-                    //Make a new receive call
-                    SocketError err = SocketError.Success;
-                    if (Running)
-                        state.Socket.BeginReceive(state.Buffer.Array, state.Buffer.Offset, state.Buffer.Count, SocketFlags.None, out err, ReceiveCallback, state);
+            // And finish with this client
+            AddClient(null, client);
+        }
 
-                    //Check for errors
-                    if (err != SocketError.Success)
-                        FreeSocket(state.Socket);
-                }
+        #endregion
+
+        #region Public Interface
+
+        /// <summary>
+        /// Sets the global error handler, which will be called when
+        /// an exception is raised inside worker threads.
+        /// 
+        /// Default behavior is to print the exception to the console.
+        /// </summary>
+        public Action<Exception> ErrorHandler
+        {
+            set
+            {
+                if (Scheduler != null)
+                    Scheduler.ErrorHandler = value;
+                else
+                    _ErrorHandler = value;
+            }
+        }
+
+        /// <summary>
+        /// Starts the Pointy server on the specified endpoint(s)
+        /// </summary>
+        public void Run(params System.Net.IPEndPoint[] endpoints)
+        {
+            // Can't restart a disposed server
+            if (Disposed == 1) throw new ObjectDisposedException("Server");
+
+            // Fire up the scheduler
+            Scheduler.Run();
+            if (_ErrorHandler != null)
+                Scheduler.ErrorHandler = _ErrorHandler;
+
+            // Fire up the sockets
+            Socks = new Socket[endpoints.Length];
+            for (var i = 0; i < endpoints.Length; i++)
+            {
+                // Setup
+                Socks[i] = new Socket(endpoints[i].AddressFamily, SocketType.Stream, ProtocolType.IP);
+                Socks[i].Bind(endpoints[i]);
+
+                // Start accepting connections
+                Socks[i].Listen(1000);
+                var args = new SocketAsyncEventArgs();
+                args.UserToken = Socks[i];
+                args.Completed += AcceptCallback;
+                if (!Socks[i].AcceptAsync(args))
+                    AcceptCallback(Socks[i], args);
             }
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// Utility class for wrapping up a socket, parser, and buffer together
-    /// </summary>
-    class ConnectionTuple
-    {
-        //Intentionally not user properties here
-        public Socket Socket;
-        public IParser Parser;
-        public ArraySegment<byte> Buffer;
-
-        public ConnectionTuple(Socket socket, IParser parser, ArraySegment<byte> buffer)
-        {
-            Socket = socket;
-            Parser = parser;
-            Buffer = buffer;
-        }
-        public ConnectionTuple()
-            : this(null, null, new ArraySegment<byte>(null))
-        {
-            
-        }
     }
 }

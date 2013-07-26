@@ -10,31 +10,31 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Pointy</RootNamespace>
     <AssemblyName>Pointy</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <PlatformTarget>x86</PlatformTarget>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
+    <Optimize>False</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
+    <DebugSymbols>True</DebugSymbols>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
@@ -43,11 +43,14 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+    <Prefer32Bit>false</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
+    <Optimize>False</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
+    <Optimize>True</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <LangVersion>default</LangVersion>
@@ -55,29 +58,35 @@
     <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
     <DocumentationFile>bin\Release\Pointy.XML</DocumentationFile>
+    <Prefer32Bit>false</Prefer32Bit>
+    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="HTTP\Methods.cs" />
+    <Compile Include="Core\Client.cs" />
+    <Compile Include="Core\RequestDataAdapter.cs" />
+    <Compile Include="Core\Scheduler.cs" />
+    <Compile Include="HTTP\Header.cs" />
     <Compile Include="HTTP\Response.cs" />
     <Compile Include="HTTP\Request.cs" />
-    <Compile Include="HTTP\Versions.cs" />
-    <Compile Include="Parsers\Powernap.cs" />
-    <Compile Include="Parsers\Utils.cs" />
-    <Compile Include="Parsing.cs" />
+    <Compile Include="HTTP\Protocol.cs" />
+    <Compile Include="HTTP\Version.cs" />
+    <Compile Include="HTTP\Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IRouter.cs" />
+    <Compile Include="Routers\CatchAllRouter.cs" />
+    <Compile Include="Routers\HostRouter.cs" />
+    <Compile Include="Routers\OWINRouter.cs" />
+    <Compile Include="Routers\URLRouter.cs" />
     <Compile Include="Server.cs" />
-    <Compile Include="IUrlDispatcher.cs" />
-    <Compile Include="Util\FormUrlencoded.cs" />
+    <Compile Include="Util\Cookies.cs" />
+    <Compile Include="Util\FormUrlEncoding.cs" />
     <Compile Include="Util\MimeType.cs" />
     <Compile Include="Util\Multipart.cs" />
+    <Compile Include="Util\SingleLinkedList.cs" />
     <Compile Include="Util\UrlEncoding.cs" />
-    <Compile Include="Util\PointyUri.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Util\URIParser.rl" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
