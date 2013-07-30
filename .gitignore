@@ -1,5 +1,6 @@
 bin/
 obj/
+packages/
 *.exe
 *.pdb
 *.exe.manifest
@@ -7,4 +8,3 @@ obj/
 *.suo
 *.pidb
 *.userprefs
-
