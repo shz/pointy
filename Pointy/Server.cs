@@ -61,15 +61,10 @@ namespace Pointy
             // Only dispose if it hasn't already happened
             if (0 == Interlocked.CompareExchange(ref Disposed, 1, 0))
             {
-                // Clean up the scheduler
+                // Clean up the worker threads
                 Scheduler.Stop();
 
-                // Close any open sockets
-                foreach (var r in ActiveClients)
-                    r.Dispose();
-                ActiveClients.Clear();
-
-                // Destroy the listening socket
+                // Destroy the listening sockets
                 for (var i = 0; i < this.Socks.Length; i++)
                 {
                     try
@@ -81,6 +76,11 @@ namespace Pointy
                         // Should probably log this...
                     }
                 }
+
+                // Close any open sockets
+                foreach (var r in ActiveClients)
+                    r.Dispose();
+                ActiveClients.Clear();
 
                 // No need to call the destructor again
                 GC.SuppressFinalize(this);
@@ -108,15 +108,18 @@ namespace Pointy
             // Tell the client to start parsing on the socket
             client.Start();
 
-            // Dead clients will quickly lose all strong references to them, as network operations
-            // complete.  Over time, dead weak references will accumulate, crowding the list.
+            // Dead clients will quickly collect as clients disconnect and network operations
+            // complete.  Over time, diposed sockets will accumulate, crowding the list.
             //
-            // To avoid holding on to a bunch of weak references for eternity, we purge dead
-            // references from the list in batches once we've added enough client to cross
-            // the watermark.
-            if (Interlocked.Increment(ref AddedClients) % 1000 == 0)
+            // To avoid holding on to a bunch of these dead sockets for eternity, we purge
+            // disposed references from the list in batches once we've added enough client
+            // to cross the watermark.  Not perfect, but it gets the job done.
+            if (Interlocked.Increment(ref AddedClients) > 200)
             {
-                Console.WriteLine("Clearing clients");
+                // Not threadsafe, but the watermark is more of a rough guide
+                // anyway, so it doesn't matter.
+                AddedClients = 0;
+
                 // Remove those elements
                 if (Monitor.TryEnter(ActiveClients))
                 {
@@ -140,7 +143,7 @@ namespace Pointy
                     }
                     finally
                     {
-                        Console.WriteLine("Reaped {0} dead clients", removed);
+                        // Console.WriteLine("Reaped {0} dead clients", removed);
                         Monitor.Exit(ActiveClients);
                     }
                 }
@@ -162,6 +165,7 @@ namespace Pointy
             // Disable Nagle algorithm, which works around an issue where
             // we get up to a 200ms delay in some cases (delayed ACK).
             //args.AcceptSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
+            args.AcceptSocket.NoDelay = true;
 
             // Create the client
             NetworkStream client = new NetworkStream(args.AcceptSocket, true);

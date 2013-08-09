@@ -20,7 +20,6 @@ Fixes a few important bugs:
 
  * Dead client reaping
  * Volatile mess in Client implementation
- * Compile in debug mode == Pointy not catching exceptions?
  * Mono kinks worked out
  * Response prevents accidental bad usage
 
